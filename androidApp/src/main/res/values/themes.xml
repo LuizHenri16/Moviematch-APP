@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Dark, no-action-bar shell that matches the single Compose `MovieMatchTheme`.
+      The actual UI colours live in shared/src/commonMain/.../presentation/theme/Color.kt;
+      this theme only avoids a white flash before Compose renders.
+    -->
+    <style name="Theme.MovieMatch" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/moviematch_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

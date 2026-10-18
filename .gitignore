@@ -1,0 +1,25 @@
+*.iml
+.kotlin
+.gradle
+**/build/
+xcuserdata
+!src/**/build/
+local.properties
+
+# Environment / secrets (Supabase keys, WEB_CLIENT_ID, ...)
+.env
+.env.*
+!.env.example
+
+.idea
+.DS_Store
+captures
+.externalNativeBuild
+.cxx
+node_modules/
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcodeproj/project.xcworkspace/
+!*.xcworkspace/contents.xcworkspacedata
+**/xcshareddata/WorkspaceSettings.xcsettings
