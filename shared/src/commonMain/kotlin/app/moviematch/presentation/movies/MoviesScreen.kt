@@ -69,11 +69,14 @@ import kotlin.math.roundToInt
  * Ported from the reference `MoviesScreen`: a summary block (counters + progress), a search field,
  * the three filter chips, then the list of [MovieCard]s. Loading renders the same rows as
  * [MovieCardSkeleton] so the list never collapses into a blank frame.
+ *
+ * @param onLogout ends the session; `null` when the app has no Supabase credentials, which hides the
+ *   header button instead of offering an action that cannot do anything.
  */
 @Composable
 fun MoviesScreen(
     onOpenDetails: (MovieEntry) -> Unit,
-    onLogout: () -> Unit,
+    onLogout: (() -> Unit)?,
     modifier: Modifier = Modifier,
     viewModel: MoviesViewModel = koinViewModel(),
 ) {
@@ -91,6 +94,15 @@ fun MoviesScreen(
         ((watchedCount.toDouble() / entries.size) * 100).roundToInt()
     }
 
+    // The header carries the logout action, and only when there is a session to end.
+    val headerAction: (@Composable () -> Unit)? = onLogout?.let { logout ->
+        {
+            HeaderIconButton(onClick = logout) {
+                IconLogout(modifier = Modifier.iconSize(18.dp), color = TextSecondary)
+            }
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -99,11 +111,7 @@ fun MoviesScreen(
         ScreenHeader(
             title = "Filmes e Séries",
             subtitle = "Nosso Catálogo",
-            action = {
-                HeaderIconButton(onClick = onLogout) {
-                    IconLogout(modifier = Modifier.iconSize(18.dp), color = TextSecondary)
-                }
-            },
+            action = headerAction,
         )
 
         LazyColumn(

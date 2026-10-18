@@ -1,7 +1,5 @@
 package app.moviematch.presentation.settings
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,7 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -27,8 +24,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,19 +37,16 @@ import app.moviematch.presentation.common.errorOrNull
 import app.moviematch.presentation.common.isLoading
 import app.moviematch.presentation.components.AppButton
 import app.moviematch.presentation.components.Avatar
+import app.moviematch.presentation.components.AvatarUrlField
 import app.moviematch.presentation.components.BentoCard
 import app.moviematch.presentation.components.HeaderIconButton
 import app.moviematch.presentation.components.StateError
 import app.moviematch.presentation.components.icons.IconChevronLeft
-import app.moviematch.presentation.components.icons.IconLink
 import app.moviematch.presentation.components.icons.iconSize
 import app.moviematch.presentation.components.skeletons.SettingsSkeleton
 import app.moviematch.presentation.theme.Accent
-import app.moviematch.presentation.theme.Border
 import app.moviematch.presentation.theme.Danger
 import app.moviematch.presentation.theme.Dimens
-import app.moviematch.presentation.theme.SurfaceDeep
-import app.moviematch.presentation.theme.TextMuted
 import app.moviematch.presentation.theme.TextPrimary
 import app.moviematch.presentation.theme.TextSecondary
 import org.koin.compose.viewmodel.koinViewModel
@@ -77,6 +69,7 @@ fun SettingsScreen(
     val urlInput by viewModel.urlInput.collectAsStateWithLifecycle()
     val fieldError by viewModel.fieldError.collectAsStateWithLifecycle()
     val justSaved by viewModel.justSaved.collectAsStateWithLifecycle()
+    val saving by viewModel.saving.collectAsStateWithLifecycle()
     val authState by viewModel.authState.collectAsStateWithLifecycle()
 
     // Activity-backed on Android (Credential Manager requirement), a documented stub on iOS.
@@ -133,6 +126,7 @@ fun SettingsScreen(
                 urlInput = urlInput,
                 fieldError = fieldError,
                 justSaved = justSaved,
+                saving = saving,
                 authState = authState,
                 onUrlChange = viewModel::onUrlChange,
                 onSave = viewModel::save,
@@ -150,6 +144,7 @@ private fun SettingsContent(
     urlInput: String,
     fieldError: String?,
     justSaved: Boolean,
+    saving: Boolean,
     authState: AuthState,
     onUrlChange: (String) -> Unit,
     onSave: () -> Unit,
@@ -227,7 +222,11 @@ private fun SettingsContent(
 
         Spacer(Modifier.height(Dimens.Spacing12))
 
-        AvatarUrlField(value = urlInput, onValueChange = onUrlChange)
+        AvatarUrlField(
+            value = urlInput,
+            onValueChange = onUrlChange,
+            enabled = !saving,
+        )
 
         if (fieldError != null) {
             Spacer(Modifier.height(Dimens.Spacing8))
@@ -251,10 +250,10 @@ private fun SettingsContent(
         Spacer(Modifier.height(Dimens.Spacing16))
 
         AppButton(
-            label = "Salvar",
+            label = if (saving) "Salvando…" else "Salvar",
             onClick = onSave,
             modifier = Modifier.fillMaxWidth(),
-            enabled = hasChanges,
+            enabled = hasChanges && !saving,
         )
 
         if (profile.avatarUrl != null) {
@@ -286,43 +285,3 @@ private fun SettingsContent(
     }
 }
 
-@Composable
-private fun AvatarUrlField(
-    value: String,
-    onValueChange: (String) -> Unit,
-) {
-    val shape = RoundedCornerShape(Dimens.RadiusTile)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(SurfaceDeep, shape)
-            .border(1.dp, Border, shape)
-            .padding(horizontal = Dimens.Spacing16, vertical = Dimens.Spacing4),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Dimens.Spacing8),
-    ) {
-        IconLink(modifier = Modifier.iconSize(16.dp), color = TextMuted)
-
-        Box(modifier = Modifier.weight(1f)) {
-            if (value.isEmpty()) {
-                Text(
-                    text = "https://exemplo.com/foto.jpg",
-                    modifier = Modifier.padding(vertical = Dimens.Spacing12),
-                    fontSize = 14.sp,
-                    color = TextMuted,
-                )
-            }
-            BasicTextField(
-                value = value,
-                onValueChange = onValueChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = Dimens.Spacing12),
-                singleLine = true,
-                textStyle = TextStyle(color = TextPrimary, fontSize = 14.sp),
-                cursorBrush = SolidColor(TextPrimary),
-            )
-        }
-    }
-}

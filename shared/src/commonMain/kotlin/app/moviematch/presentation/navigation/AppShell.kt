@@ -15,6 +15,8 @@ import androidx.navigation.compose.rememberNavController
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import app.moviematch.presentation.addmovie.AddMovieScreen
+import app.moviematch.auth.AuthStore
+import app.moviematch.config.Secrets
 import app.moviematch.presentation.common.ContentSelectionStore
 import app.moviematch.presentation.details.MovieDetailsScreen
 import app.moviematch.presentation.home.HomeScreen
@@ -35,8 +37,23 @@ import org.koin.compose.koinInject
 fun AppShell(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
     val selectionStore = koinInject<ContentSelectionStore>()
+    val authStore = koinInject<AuthStore>()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: Routes.HOME
+
+    // Header logout. It ends the real session and lets the gate in `App` swap this shell for the
+    // login screen; no navigation happens here. `signOut()` is fire-and-forget by design: it owns an
+    // application-scoped coroutine and reports failures through `AuthState.Error`, so the button has
+    // nothing to await and no exception to handle.
+    //
+    // Without Supabase credentials there is no session to end, so the button is not offered at all
+    // (`null` hides it) instead of sitting there doing nothing. Settings stays reachable through the
+    // "Perfil" tab of the bottom bar.
+    val onLogout: (() -> Unit)? = if (Secrets.hasSupabaseConfig) {
+        { authStore.signOut() }
+    } else {
+        null
+    }
 
     // Shared backdrop state. The content layer is marked as the Haze *source* and the floating bar
     // blurs it — the multiplatform equivalent of the reference app's native `BlurView`.
@@ -59,7 +76,7 @@ fun AppShell(modifier: Modifier = Modifier) {
                         selectionStore.select(item.id, item.type)
                         navController.navigate(Routes.DETAILS) { launchSingleTop = true }
                     },
-                    onLogout = { navController.navigate(Routes.SETTINGS) },
+                    onLogout = onLogout,
                 )
             }
 
@@ -69,7 +86,7 @@ fun AppShell(modifier: Modifier = Modifier) {
                         selectionStore.select(entry.item.id, entry.item.type)
                         navController.navigate(Routes.DETAILS) { launchSingleTop = true }
                     },
-                    onLogout = { navController.navigate(Routes.SETTINGS) },
+                    onLogout = onLogout,
                 )
             }
 

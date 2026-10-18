@@ -8,6 +8,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,8 +32,12 @@ import app.moviematch.presentation.theme.avatarInitial
 import coil3.compose.AsyncImage
 
 /**
- * Round profile bubble: the avatar image when the profile has one, otherwise the coloured initial
- * (Maria in lavender, Luiz in sage). Mirrors `Avatar` from the reference design system.
+ * Round profile bubble: the downloaded avatar image when the profile has one, otherwise the coloured
+ * initial (Maria in lavender, Luiz in sage). Mirrors `Avatar` from the reference design system.
+ *
+ * The initial is always painted *underneath* the image, so it doubles as the loading placeholder and
+ * as the fallback: a link that resolves simply covers it, while a broken link (or no connection)
+ * leaves the name on screen instead of an empty hole.
  */
 @Composable
 fun Avatar(
@@ -38,19 +46,6 @@ fun Avatar(
     url: String? = null,
     size: Dp = Dimens.AvatarMedium,
 ) {
-    if (url != null) {
-        AsyncImage(
-            model = url,
-            contentDescription = null,
-            modifier = modifier
-                .size(size)
-                .clip(CircleShape),
-            contentScale = ContentScale.Crop,
-            placeholder = null,
-        )
-        return
-    }
-
     Box(
         modifier = modifier
             .size(size)
@@ -64,6 +59,19 @@ fun Avatar(
             fontWeight = FontWeight.Bold,
             fontSize = (size.value * 0.42f).sp,
         )
+
+        if (url != null) {
+            var failed by remember(url) { mutableStateOf(false) }
+            if (!failed) {
+                AsyncImage(
+                    model = url,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    onError = { failed = true },
+                )
+            }
+        }
     }
 }
 

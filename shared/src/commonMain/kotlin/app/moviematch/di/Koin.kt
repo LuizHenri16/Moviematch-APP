@@ -6,12 +6,14 @@ import app.moviematch.data.mock.MockData
 import app.moviematch.data.mock.MockMovieRepository
 import app.moviematch.data.supabase.createAppSupabaseClient
 import app.moviematch.data.supabase.createSettings
+import app.moviematch.data.supabase.ProfileRepository
 import app.moviematch.domain.MovieRepository
 import app.moviematch.presentation.addmovie.AddMovieViewModel
 import app.moviematch.presentation.common.ContentSelectionStore
 import app.moviematch.presentation.common.CurrentProfileStore
 import app.moviematch.presentation.details.MovieDetailsViewModel
 import app.moviematch.presentation.home.HomeViewModel
+import app.moviematch.presentation.login.LoginViewModel
 import app.moviematch.presentation.movies.MoviesViewModel
 import app.moviematch.presentation.settings.SettingsViewModel
 import io.github.jan.supabase.SupabaseClient
@@ -44,6 +46,13 @@ val supabaseModule = module {
     }
 
     single { AuthStore(supabaseClient = getOrNull<SupabaseClient>(), currentProfile = get()) }
+
+    /**
+     * The single `public.profiles` write path, used by the avatar form of the settings screen.
+     * Resolves to a `null` client when Supabase is not configured, which makes it keep the avatar
+     * in memory only.
+     */
+    single { ProfileRepository(supabaseClient = getOrNull<SupabaseClient>(), currentProfile = get()) }
 }
 
 /** Application services that are not tied to a single screen. */
@@ -61,7 +70,8 @@ val viewModelModule = module {
     viewModel { MoviesViewModel(get()) }
     viewModel { AddMovieViewModel(get()) }
     viewModel { MovieDetailsViewModel(get(), get(), get()) }
-    viewModel { SettingsViewModel(get(), get(), get()) }
+    viewModel { SettingsViewModel(get(), get(), get(), get()) }
+    viewModel { LoginViewModel(get()) }
 }
 
 /** Everything the app needs, in start order. Shared by the two platform entry points. */

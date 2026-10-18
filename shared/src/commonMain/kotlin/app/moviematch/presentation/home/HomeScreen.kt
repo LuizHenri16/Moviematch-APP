@@ -45,11 +45,14 @@ import org.koin.compose.viewmodel.koinViewModel
  * All numbers come from [app.moviematch.domain.homeStats] through [HomeViewModel]; the screen only
  * maps them to components. While the first load is in flight the same grid is rendered as
  * [HomeSkeleton], so the layout never jumps.
+ *
+ * @param onLogout ends the session; `null` when the app has no Supabase credentials, which hides the
+ *   header button instead of offering an action that cannot do anything.
  */
 @Composable
 fun HomeScreen(
     onOpenDetails: (ContentItem) -> Unit,
-    onLogout: () -> Unit,
+    onLogout: (() -> Unit)?,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
@@ -75,6 +78,15 @@ fun HomeScreen(
 
     val stats = state.dataOrNull()
 
+    // The header carries the logout action, and only when there is a session to end.
+    val headerAction: (@Composable () -> Unit)? = onLogout?.let { logout ->
+        {
+            HeaderIconButton(onClick = logout) {
+                IconLogout(modifier = Modifier.iconSize(18.dp), color = TextSecondary)
+            }
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -83,11 +95,7 @@ fun HomeScreen(
         ScreenHeader(
             title = "Home",
             subtitle = "Acompanhe seus Filmes e Séries",
-            action = {
-                HeaderIconButton(onClick = onLogout) {
-                    IconLogout(modifier = Modifier.iconSize(18.dp), color = TextSecondary)
-                }
-            },
+            action = headerAction,
         )
 
         when {

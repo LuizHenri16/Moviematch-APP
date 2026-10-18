@@ -5,11 +5,15 @@ import androidx.lifecycle.viewModelScope
 import app.moviematch.auth.AuthState
 import app.moviematch.auth.AuthStore
 import app.moviematch.auth.GoogleSignInProvider
+import app.moviematch.data.supabase.AVATAR_URL_FORMAT_ERROR
+import app.moviematch.data.supabase.ProfileRepository
+import app.moviematch.data.supabase.isAvatarUrlValid
 import app.moviematch.domain.MovieRepository
 import app.moviematch.domain.model.Profile
 import app.moviematch.presentation.common.CurrentProfileStore
 import app.moviematch.presentation.common.UiState
 import app.moviematch.presentation.common.uiStateOf
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,14 +25,15 @@ import kotlinx.coroutines.launch
  * form.
  *
  * The screen keeps working without a session: [CurrentProfileStore] still holds the seeded profile
- * and [authState] is the only extra thing it renders (the sign-in/sign-out button). The avatar
- * save stays in memory — the same contract the Supabase implementation will have, which is why the
- * screen does not change later.
+ * and [authState] is the only extra thing it renders (the sign-in/sign-out button). Saving the photo
+ * goes through [ProfileRepository], the single avatar write path, which persists to `public.profiles`
+ * when there is a session and keeps the value in memory otherwise.
  */
 class SettingsViewModel(
     private val repository: MovieRepository,
     private val currentProfile: CurrentProfileStore,
     private val authStore: AuthStore,
+    private val profileRepository: ProfileRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<UiState<Profile>>(UiState.Loading)
@@ -42,6 +47,10 @@ class SettingsViewModel(
 
     private val _justSaved = MutableStateFlow(false)
     val justSaved: StateFlow<Boolean> = _justSaved.asStateFlow()
+
+    /** `true` while the avatar URL is being written; disables the form. */
+    private val _saving = MutableStateFlow(false)
+    val saving: StateFlow<Boolean> = _saving.asStateFlow()
 
     /** Session state, forwarded from [AuthStore] so the screen only talks to its `ViewModel`. */
     val authState: StateFlow<AuthState> = authStore.state
@@ -81,19 +90,34 @@ class SettingsViewModel(
         _justSaved.value = false
     }
 
-    /** Validates and stores the avatar URL; empty input clears the photo. */
+    /**
+     * Validates and persists the avatar URL through [ProfileRepository] (the single avatar write
+     * path); empty input clears the photo.
+     */
     fun save() {
         val trimmed = _urlInput.value.trim()
-        if (trimmed.isNotEmpty() && !trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
-            _fieldError.value = "Use um link que comece com http:// ou https://"
+        if (trimmed.isNotEmpty() && !isAvatarUrlValid(trimmed)) {
+            _fieldError.value = AVATAR_URL_FORMAT_ERROR
             return
         }
 
-        val current = (_state.value as? UiState.Content)?.data ?: return
-        val updated = current.copy(avatarUrl = trimmed.ifEmpty { null })
-        currentProfile.set(updated)
-        _state.value = UiState.Content(updated)
-        _justSaved.value = true
+        viewModelScope.launch {
+            _saving.value = true
+            _fieldError.value = null
+            _justSaved.value = false
+            try {
+                val updated = profileRepository.updateAvatarUrl(trimmed.ifEmpty { null })
+                _state.value = UiState.Content(updated)
+                _justSaved.value = true
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Never swallow a write failure: the person must see why the photo did not stick.
+                _fieldError.value = e.message ?: "Não foi possível salvar a foto. Tente novamente."
+            } finally {
+                _saving.value = false
+            }
+        }
     }
 
     /** Clears the avatar photo. */

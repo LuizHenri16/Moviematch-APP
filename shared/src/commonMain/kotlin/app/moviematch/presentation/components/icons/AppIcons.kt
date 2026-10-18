@@ -266,6 +266,50 @@ fun IconMore(modifier: Modifier = Modifier, color: Color = TextSecondary) {
     }
 }
 
+/** Ticket — the brand mark of the login screen ("Movie Match"). */
+@Composable
+fun IconTicket(modifier: Modifier = Modifier, color: Color = TextSecondary) {
+    Canvas(modifier = modifier) {
+        val unit = u()
+        drawRoundRect(
+            color = color,
+            topLeft = at(2f, 6f),
+            size = Size(20f * unit, 12f * unit),
+            cornerRadius = CornerRadius(3f * unit),
+            style = stroke(),
+        )
+        // Perforated stub, the dashed line that reads as "ticket".
+        listOf(7.6f, 11f, 14.4f).forEach { y ->
+            drawLine(color, at(13f, y), at(13f, y + 1.2f), unit * 1.5f, StrokeCap.Round)
+        }
+    }
+}
+
+/** Padlock — the "só vocês dois" badge of the login profile card. */
+@Composable
+fun IconLock(modifier: Modifier = Modifier, color: Color = TextSecondary) {
+    Canvas(modifier = modifier) {
+        val unit = u()
+        val style = stroke(1.6f)
+        drawArc(
+            color = color,
+            startAngle = 180f,
+            sweepAngle = 180f,
+            useCenter = false,
+            topLeft = at(7.5f, 4.5f),
+            size = Size(9f * unit, 9f * unit),
+            style = style,
+        )
+        drawRoundRect(
+            color = color,
+            topLeft = at(5f, 10f),
+            size = Size(14f * unit, 10f * unit),
+            cornerRadius = CornerRadius(2.5f * unit),
+            style = style,
+        )
+    }
+}
+
 /** Chain link — the avatar URL field of the settings screen. */
 @Composable
 fun IconLink(modifier: Modifier = Modifier, color: Color = TextSecondary) {

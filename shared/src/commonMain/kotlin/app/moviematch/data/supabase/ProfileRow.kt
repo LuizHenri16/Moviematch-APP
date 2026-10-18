@@ -7,7 +7,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /** `public.profiles`, the 1:1 mirror of `auth.users` (see `docs/native-app/supabase/0001_init.sql`). */
-private const val PROFILES_TABLE = "profiles"
+internal const val PROFILES_TABLE = "profiles"
 
 /**
  * Subset of `public.profiles` the app reads.
