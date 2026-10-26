@@ -1,7 +1,5 @@
 package app.moviematch.presentation.navigation
 
-import androidx.compose.ui.unit.dp
-
 /**
  * Route names of the shared navigation graph.
  *
@@ -15,14 +13,8 @@ object Routes {
     const val ADD = "add"
     const val DETAILS = "details"
     const val SETTINGS = "settings"
+    const val GROUP = "group"
 }
 
-/** Destinations that keep the floating bottom bar visible. */
+/** Destinations that keep the bottom navigation bar visible. */
 val BottomBarRoutes: Set<String> = setOf(Routes.HOME, Routes.MOVIES, Routes.ADD)
-
-/**
- * Extra breathing room between the last scrollable item and the floating bar.
- *
- * The bar height itself lives in [app.moviematch.presentation.theme.Dimens.BottomBarContentHeight].
- */
-val BottomBarSpacing = 16.dp

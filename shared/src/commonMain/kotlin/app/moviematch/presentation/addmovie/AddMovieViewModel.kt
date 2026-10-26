@@ -15,9 +15,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * Drives the "Adicionar" tab: a debounced search against the mock TMDb catalogue and the
- * "add to watch list" mutation, mirroring the reference screen's `requestId` de-duplication with a
- * simple cancellable [Job].
+ * Drives the "Adicionar" tab: a debounced search against the TMDb catalogue (through
+ * `MovieRepository.search`) and the "add to watch list" mutation, mirroring the reference screen's
+ * `requestId` de-duplication with a simple cancellable [Job].
  */
 class AddMovieViewModel(
     private val repository: MovieRepository,

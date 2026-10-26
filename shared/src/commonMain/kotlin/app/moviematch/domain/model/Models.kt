@@ -46,6 +46,15 @@ data class Group(
     val name: String,
     val members: List<Profile> = emptyList(),
     val createdAt: String = "",
+    /** Shareable short code of the group (`groups.invite_code`), used to invite the other half. */
+    val inviteCode: String? = null,
+    /**
+     * `groups.created_by`, the profile that created the group.
+     *
+     * It is the identity the backend uses in `remove_member` (`only the creator can remove the
+     * partner`). It is kept nullable because the column may be absent from an old row/response.
+     */
+    val createdBy: String? = null,
 )
 
 data class Movie(
@@ -112,6 +121,33 @@ data class RatingWithProfile(
 )
 
 data class ProfileRef(val displayName: String)
+
+/**
+ * A profile hit of the invite search (`search_profiles` RPC).
+ *
+ * It carries the `handle` because that is what the invite rows show next to the name; the rest of the
+ * app only ever needs a [Profile].
+ */
+data class ProfileSummary(
+    val id: String,
+    val displayName: String,
+    val handle: String? = null,
+    val avatarUrl: String? = null,
+)
+
+/**
+ * An invite the signed-in member can answer, as read from `public.group_invites`.
+ *
+ * Only these four fields travel to the app: the RLS policies hide the inviter's profile and the group
+ * row from someone who is not a member yet, so the screen cannot name who is inviting — it can only
+ * offer to accept or decline (see `data/supabase/GroupRepository.kt`).
+ */
+data class GroupInvite(
+    val id: String,
+    val groupId: String,
+    val createdAt: String = "",
+    val expiresAt: String? = null,
+)
 
 /** A watch session joined with its movie, the shape the detail screen consumes. */
 data class SessionWithMovie(

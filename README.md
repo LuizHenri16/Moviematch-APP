@@ -1,5 +1,7 @@
 # MovieMatch — Kotlin Multiplatform + Compose Multiplatform
 
+> **Arquitetura atual:** consulte [`ARCHITECTURE.md`](ARCHITECTURE.md) como fonte única.
+
 App Android + iOS compartilhando UI e regras de negócio em Kotlin (Compose Multiplatform).
 Este repositório contém **apenas a configuração inicial** (esqueleto que compila e roda) —
 as funcionalidades de negócio (login com Google/Supabase, grupos de 2 pessoas, sessões e
@@ -113,6 +115,7 @@ O login é **aditivo**: sem sessão o app continua funcionando com o profile sem
 | `SUPABASE_URL` | Supabase Dashboard → Project Settings → API |
 | `SUPABASE_ANON_KEY` | idem (chave pública `sb_publishable_*` / `anon`) |
 | `WEB_CLIENT_ID` | Google Cloud Console → Credentials → OAuth client do tipo **Web application** |
+| `TMDB_API_KEY` | TMDb → Settings → API → *API Key* (chave **v3**, usada pela busca da tela Adicionar) |
 
 > É o client ID **Web** (não o Android) que vai no app: ele é o `aud` do ID token, e é contra ele
 > que o Supabase valida o token.
@@ -152,6 +155,49 @@ compartilhado e funciona no iOS.
 
 ---
 
+## Dados (Supabase + TMDb)
+
+`domain/MovieRepository` tem duas implementações, ambas em `data/`:
+
+- `data/supabase/SupabaseMovieRepository.kt` — backend real (Postgrest + RPCs, busca no TMDb);
+  escolhida quando o `.env` traz `SUPABASE_URL` + `SUPABASE_ANON_KEY`;
+- `data/mock/MockMovieRepository.kt` — semente em memória, usada quando não há credenciais
+  (clone limpo, CI sem `.env`).
+
+A escolha acontece **só** no `dataModule` (Koin); nenhuma tela ou `ViewModel` sabe qual está ativa.
+
+### Schema
+
+`supabase/0001_init.sql` é uma cópia verbatim do schema já aplicado no projeto Supabase — tabelas
+`movies`/`series`, as sessões `sessions`/`series_sessions`, `ratings`/`series_ratings`, `profiles`,
+`groups`/`group_members`, com RLS por grupo e os RPCs `upsert_movie`/`upsert_series`. Nada foi
+alterado no arquivo: o que está versionado aqui é exatamente o que roda no servidor.
+
+Três pontos do schema que explicam decisões do repositório:
+
+- o catálogo global (`movies`/`series`) **não** tem policy de escrita: a única porta é o RPC
+  `upsert_movie`/`upsert_series` (`SECURITY DEFINER`), que resolve a linha pelo `tmdb_id`;
+- apagar um título remove apenas a sessão do grupo (`ratings` caem por cascade); a linha do catálogo
+  compartilhado permanece — outros grupos podem estar usando o mesmo filme;
+- `ratings`/`series_ratings` guardam o `group_id` desnormalizado, lido da própria sessão na hora de
+  salvar a nota.
+
+### Busca no TMDb
+
+A tela **Adicionar** busca em `https://api.themoviedb.org/3` (`language=pt-BR`, timeout de 12s) pelo
+`data/supabase/TmdbClient.kt`; a chave vem de `TMDB_API_KEY`. Sem chave, a busca falha com uma
+mensagem clara ("Chave do TMDb não configurada...") em vez de chamar a rede.
+
+Adicionar um resultado chama `addToWatchList(result)`, que busca os detalhes no TMDb, grava o título
+no catálogo pelo RPC (`upsert_*`) e cria a sessão no grupo como `PENDING` — o `tmdb_id` é a amarração
+entre os dois.
+
+Os pôsteres são gravados como `poster_path` cru (padrão do TMDb/banco) e só viram URL completa
+(`https://image.tmdb.org/t/p/<size>`) nos modelos que a UI consome: `ContentItem.posterUrl`
+(w500) e `SearchResult.posterUrl` (w185).
+
+---
+
 ## Versões fixadas
 
 | Componente | Versão |
@@ -168,7 +214,7 @@ compartilhado e funciona no iOS.
 | supabase-kt | 3.8.0 |
 | Koin | 4.2.2 |
 | Coil3 | 3.5.0 |
-| Haze (blur de backdrop) | 1.7.2 |
+| Material 3 (`org.jetbrains.compose.material3`) | 1.11.0-alpha07 |
 | AndroidX Credential Manager (`credentials` + `credentials-play-services-auth`) | 1.6.0 |
 | `com.google.android.libraries.identity.googleid` | 1.2.1 |
 | multiplatform-settings | 1.3.0 |
@@ -206,7 +252,9 @@ sido rebaixadas por causa do compileSdk 35 subiram para as versões estáveis ma
 ## Testes
 
 - `shared/src/commonTest` contém `domain/MovieMathTest.kt` (cálculos de média/veredito portados do
-  app de referência) e um teste de fumaça do `expect/actual` (`PlatformTest.kt`).
+  app de referência), um teste de fumaça do `expect/actual` (`PlatformTest.kt`) e os testes da camada
+  de dados (`data/supabase/*`: mappers de linha e `search`/`addToWatchList` contra um `MockEngine` do
+  Ktor, sem rede).
 - Dependências de teste já preparadas: `kotlin-test`, `kotlinx-coroutines-test`, `turbine`,
   `ktor-client-mock`.
 - O bloco `androidLibrary { }` habilita `withHostTest { }`, então `commonTest` roda **no host JVM**
@@ -223,6 +271,7 @@ sido rebaixadas por causa do compileSdk 35 subiram para as versões estáveis ma
 - [x] Cliente Supabase + Ktor `HttpClient` no `dataModule` (Koin).
 - [x] Login com **Google Sign-In → ID token → `supabase.auth.signInWithIdToken`** (Android; iOS é
   stub documentado, ver "Login com Google (Supabase)").
+- [x] Repositório real (`SupabaseMovieRepository`) + busca no TMDb na tela Adicionar.
 - [ ] Login com Google no iOS (SDK GoogleSignIn-iOS + binding C-interop).
 - [ ] Telas de grupos/convites (2 pessoas) conforme `docs/native-app/`.
 - [ ] Realtime na publicação `supabase_realtime` para convites e sessões.

@@ -1,8 +1,6 @@
 package app.moviematch.presentation.details
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,15 +9,15 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -27,11 +25,15 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.BasicAlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,14 +42,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -66,31 +66,26 @@ import app.moviematch.presentation.components.AppButton
 import app.moviematch.presentation.components.Avatar
 import app.moviematch.presentation.components.BentoCard
 import app.moviematch.presentation.components.BentoTile
+import app.moviematch.presentation.components.ButtonVariant
+import app.moviematch.presentation.components.Chip
+import app.moviematch.presentation.components.ChipSize
+import app.moviematch.presentation.components.ChipTone
 import app.moviematch.presentation.components.HeaderIconButton
 import app.moviematch.presentation.components.IconBadge
+import app.moviematch.presentation.components.ScreenTopBar
 import app.moviematch.presentation.components.StateError
 import app.moviematch.presentation.components.icons.IconChevronLeft
 import app.moviematch.presentation.components.icons.IconDocument
+import app.moviematch.presentation.components.icons.IconFilm
+import app.moviematch.presentation.components.icons.IconSize
 import app.moviematch.presentation.components.icons.iconSize
 import app.moviematch.presentation.components.skeletons.MovieDetailsSkeleton
-import app.moviematch.presentation.theme.Amber
-import app.moviematch.presentation.theme.Border
-import app.moviematch.presentation.theme.BorderStrong
-import app.moviematch.presentation.theme.ChromeSurface
-import app.moviematch.presentation.theme.DangerStrong
+import app.moviematch.presentation.theme.CardMetaStyle
+import app.moviematch.presentation.theme.DialogBodyStyle
+import app.moviematch.presentation.theme.DialogTitleStyle
 import app.moviematch.presentation.theme.Dimens
-import app.moviematch.presentation.theme.HeroScrimBottom
-import app.moviematch.presentation.theme.HeroScrimMid
 import app.moviematch.presentation.theme.HeroTitleStyle
-import app.moviematch.presentation.theme.Surface
-import app.moviematch.presentation.theme.SurfaceCard
-import app.moviematch.presentation.theme.SurfaceCardElevated
-import app.moviematch.presentation.theme.SurfaceHero
-import app.moviematch.presentation.theme.TextMuted
-import app.moviematch.presentation.theme.TextPrimary
-import app.moviematch.presentation.theme.TextSecondary
-import app.moviematch.presentation.theme.TextSoft
-import app.moviematch.presentation.theme.White
+import app.moviematch.presentation.theme.MicroLabelStyle
 import coil3.compose.AsyncImage
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -100,6 +95,10 @@ import org.koin.compose.viewmodel.koinViewModel
  * The hero (poster + scrim + badges + tags), the "Nosso Veredito" card, the synopsis and the action
  * row all read from a single [ContentItem]. The two destructive flows live in their own dialogs, and
  * the screen only navigates back once the deletion actually succeeded.
+ *
+ * Material 3: the hero is a [Card] on `surfaceContainerLow`, the transparent top app bar floats over
+ * the artwork (the back button carries its own scrim via [HeaderIconButton]'s `overPoster`), and the
+ * only gradient left is the neutral black scrim that keeps the text over the poster legible.
  */
 @Composable
 fun MovieDetailsScreen(
@@ -125,84 +124,96 @@ fun MovieDetailsScreen(
 
     val item = state.dataOrNull()
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .statusBarsPadding(),
-    ) {
-        Row(
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = Dimens.ScreenPadding, vertical = Dimens.Spacing12),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .fillMaxSize()
+                .statusBarsPadding(),
         ) {
-            HeaderIconButton(onClick = onBack) {
-                IconChevronLeft(modifier = Modifier.iconSize(18.dp), color = TextPrimary)
-            }
-            // Keeps the back arrow on the leading edge, like the reference header's empty twin.
-            Spacer(Modifier.size(Dimens.IconButtonSize))
-        }
-
-        when {
-            state.isLoading -> Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = Dimens.ScreenPadding, vertical = Dimens.Spacing8),
-            ) {
-                MovieDetailsSkeleton()
-            }
-
-            item == null -> Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                StateError(
-                    message = state.errorOrNull() ?: "Não foi possível carregar este título.",
-                    onRetry = viewModel::reload,
-                )
-            }
-
-            else -> Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(
-                        start = Dimens.ScreenPadding,
-                        end = Dimens.ScreenPadding,
-                        top = Dimens.Spacing8,
-                        bottom = Dimens.Spacing24,
-                    ),
-            ) {
-                HeroCard(item = item)
-
-                Spacer(Modifier.height(Dimens.Spacing16))
-
-                VerdictCard(item = item)
-
-                if (!item.overview.isNullOrBlank()) {
-                    Spacer(Modifier.height(Dimens.Spacing16))
-                    SynopsisCard(overview = item.overview)
+            when {
+                state.isLoading -> Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .navigationBarsPadding()
+                        .padding(
+                            start = Dimens.ScreenPadding,
+                            end = Dimens.ScreenPadding,
+                            bottom = Dimens.Spacing8,
+                        ),
+                ) {
+                    MovieDetailsSkeleton()
                 }
 
-                Spacer(Modifier.height(Dimens.Spacing16))
+                item == null -> Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    StateError(
+                        message = state.errorOrNull() ?: "Não foi possível carregar este título.",
+                        onRetry = viewModel::reload,
+                    )
+                }
 
-                ActionRow(
-                    onEditRatings = viewModel::openRatingDialog,
-                    onRewatch = {
-                        if (item.isWatched) {
-                            viewModel.moveBackToQueue()
-                        } else {
-                            showQueueNotice = true
-                        }
-                    },
-                    onDelete = { showDeleteConfirm = true },
-                )
+                else -> Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .navigationBarsPadding()
+                        .padding(
+                            start = Dimens.ScreenPadding,
+                            end = Dimens.ScreenPadding,
+                            bottom = Dimens.Spacing24,
+                        ),
+                ) {
+                    HeroCard(item = item)
 
-                Spacer(Modifier.height(30.dp))
+                    Spacer(Modifier.height(Dimens.Spacing16))
+
+                    VerdictCard(item = item)
+
+                    if (!item.overview.isNullOrBlank()) {
+                        Spacer(Modifier.height(Dimens.Spacing16))
+                        SynopsisCard(overview = item.overview)
+                    }
+
+                    Spacer(Modifier.height(Dimens.Spacing16))
+
+                    ActionRow(
+                        onEditRatings = viewModel::openRatingDialog,
+                        onRewatch = {
+                            if (item.isWatched) {
+                                viewModel.moveBackToQueue()
+                            } else {
+                                showQueueNotice = true
+                            }
+                        },
+                        onDelete = { showDeleteConfirm = true },
+                    )
+
+                    Spacer(Modifier.height(Dimens.Spacing24))
+                }
             }
         }
+
+        // Transparent app bar floating over the hero: the poster starts at the top of the canvas, so
+        // an opaque (`floating = true`) bar would hide the artwork. Contrast comes from the scrim of
+        // the icon button, not from a blurred chrome layer.
+        ScreenTopBar(
+            title = "",
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding(),
+            navigationIcon = {
+                HeaderIconButton(
+                    onClick = onBack,
+                    contentDescription = "Voltar",
+                    overPoster = true,
+                ) {
+                    IconChevronLeft(modifier = Modifier.iconSize(18.dp), color = Color.White)
+                }
+            },
+        )
     }
 
     if (ratingDialogOpen && item != null) {
@@ -239,118 +250,116 @@ fun MovieDetailsScreen(
     }
 }
 
-/** Poster + scrim + badges + title/tags, the signature block of the screen. */
+/** Poster + badges + the title band, the signature block of the screen. */
 @Composable
 private fun HeroCard(item: ContentItem) {
-    val shape = RoundedCornerShape(Dimens.RadiusHero)
     val watched = item.isWatched
+    var posterFailed by remember(item.posterUrl) { mutableStateOf(false) }
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(SurfaceHero, shape)
-            .border(1.dp, BorderStrong, shape),
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.ElevationCard),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(0.82f),
-        ) {
-            if (item.posterUrl != null) {
-                AsyncImage(
-                    model = item.posterUrl,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    placeholder = null,
-                )
-            } else {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(0.82f),
+            ) {
+                // The placeholder is always painted first, so a missing/broken poster leaves a
+                // readable glyph instead of a hole behind the badges.
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(SurfaceCardElevated),
-                )
-            }
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    IconFilm(
+                        modifier = Modifier.iconSize(IconSize.Large),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
 
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.62f)
-                    .background(
-                        Brush.verticalGradient(
-                            0f to Color.Transparent,
-                            0.48f to HeroScrimMid,
-                            1f to HeroScrimBottom,
+                if (item.posterUrl != null && !posterFailed) {
+                    AsyncImage(
+                        model = item.posterUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        placeholder = null,
+                        onError = { posterFailed = true },
+                    )
+                }
+
+                // Neutral scrim: darker at the top and bottom so the status area and the badge row
+                // never sit on the raw artwork. No brand gradient — only legibility.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                0f to Color.Black.copy(alpha = 0.40f),
+                                0.30f to Color.Transparent,
+                                0.62f to Color.Transparent,
+                                1f to Color.Black.copy(alpha = 0.70f),
+                            ),
                         ),
-                    ),
-            )
+                )
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
-            ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(Dimens.Spacing12),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     HeroBadge(
-                        label = if (watched) "ASSISTIDO" else "PENDENTE",
-                        fontWeight = FontWeight.ExtraBold,
+                        label = if (watched) "Assistido" else "Pendente",
+                        highlighted = watched,
                     )
                     if (watched) {
-                        Row(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(ChromeSurface, RoundedCornerShape(16.dp))
-                                .border(1.dp, Border, RoundedCornerShape(16.dp))
-                                .padding(horizontal = Dimens.Spacing12, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = TextSoft,
-                                modifier = Modifier.size(14.dp),
-                            )
-                            Text(
-                                text = formatDateShort(item.watchedAt),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = TextSoft,
-                            )
-                        }
+                        WatchedDateBadge(item = item)
                     }
                 }
-
-                HeroBottom(item = item)
             }
+
+            HeroBottom(item = item)
         }
     }
 }
 
 @Composable
-private fun HeroBadge(label: String, fontWeight: FontWeight) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(ChromeSurface, RoundedCornerShape(16.dp))
-            .border(1.dp, Border, RoundedCornerShape(16.dp))
-            .padding(horizontal = Dimens.Spacing12, vertical = 6.dp),
-    ) {
-        Text(
-            text = label,
-            fontSize = 11.sp,
-            fontWeight = fontWeight,
-            letterSpacing = 0.5.sp,
-            color = TextPrimary,
-        )
-    }
+private fun HeroBadge(label: String, highlighted: Boolean) {
+    // Category chip = badge pinned over imagery (uppercase micro label); `selected` lifts the
+    // "Assistido" state to the `secondaryContainer` role.
+    Chip(
+        label = label,
+        size = ChipSize.Small,
+        tone = ChipTone.Category,
+        selected = highlighted,
+    )
+}
+
+@Composable
+private fun WatchedDateBadge(item: ContentItem) {
+    Chip(
+        label = formatDateShort(item.watchedAt),
+        size = ChipSize.Small,
+        tone = ChipTone.Category,
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp),
+            )
+        },
+    )
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -358,38 +367,38 @@ private fun HeroBadge(label: String, fontWeight: FontWeight) {
 private fun HeroBottom(item: ContentItem) {
     val metaLine = listOfNotNull(
         item.year?.toString(),
-        if (item.type == ContentType.MOVIE) item.duration?.uppercase() else null,
+        if (item.type == ContentType.MOVIE) item.duration else null,
         item.seasons?.let { "$it temporada${if (it > 1) "s" else ""}" },
         item.episodes?.let { "$it episódios" },
     ).joinToString(" • ")
 
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(Dimens.Spacing16),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         if (metaLine.isNotEmpty()) {
             Text(
                 text = metaLine,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.8.sp,
-                color = TextSoft,
+                style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.8.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(Dimens.Spacing16))
         }
 
         Text(
             text = (item.title.ifBlank {
                 if (item.type == ContentType.TV) "Série sem título" else "Filme sem título"
-            }).uppercase(),
+            }),
             style = HeroTitleStyle,
-            color = TextPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
         )
 
         if (item.genres.isNotEmpty()) {
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(Dimens.Spacing16))
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(
@@ -402,7 +411,7 @@ private fun HeroBottom(item: ContentItem) {
             }
         }
 
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(Dimens.Spacing16))
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -411,20 +420,18 @@ private fun HeroBottom(item: ContentItem) {
             Icon(
                 imageVector = Icons.Default.Star,
                 contentDescription = null,
-                tint = TextSecondary,
                 modifier = Modifier.size(16.dp),
             )
             Row {
                 Text(
                     text = "Escolhido por ",
-                    fontSize = 13.sp,
-                    color = TextSecondary,
+                    style = DialogBodyStyle,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     text = item.suggestedBy?.displayName ?: "—",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
+                    style = DialogBodyStyle.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
         }
@@ -433,19 +440,7 @@ private fun HeroBottom(item: ContentItem) {
 
 @Composable
 private fun HeroTag(genre: String) {
-    val shape = RoundedCornerShape(16.dp)
-    Text(
-        text = genre,
-        modifier = Modifier
-            .clip(shape)
-            .background(SurfaceCardElevated.copy(alpha = 0.9f), shape)
-            .border(1.dp, Border, shape)
-            .padding(horizontal = 14.dp, vertical = 6.dp),
-        fontSize = 12.sp,
-        color = TextSoft,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-    )
+    Chip(label = genre, tone = ChipTone.Neutral)
 }
 
 /** "Nosso Veredito": average badge plus one rating box per member. */
@@ -459,11 +454,10 @@ private fun VerdictCard(item: ContentItem) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Dimens.Spacing12),
         ) {
-            IconBadge(size = Dimens.IconBadgeMedium, containerColor = SurfaceCardElevated) {
+            IconBadge(size = Dimens.IconBadgeMedium) {
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = null,
-                    tint = TextPrimary,
                     modifier = Modifier.size(18.dp),
                 )
             }
@@ -472,23 +466,27 @@ private fun VerdictCard(item: ContentItem) {
                 Text(
                     text = "Nosso Veredito",
                     style = MaterialTheme.typography.titleLarge,
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Row(
-                    modifier = Modifier.padding(top = 2.dp),
+                    modifier = Modifier.padding(top = Dimens.Spacing4),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Dimens.Spacing4),
                 ) {
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
                         contentDescription = null,
-                        tint = if (approved) Amber else TextMuted,
+                        tint = if (approved) {
+                            MaterialTheme.colorScheme.tertiary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                         modifier = Modifier.size(13.dp),
                     )
                     Text(
                         text = approvedLabel(average, item.ratings.size),
-                        fontSize = 11.sp,
-                        color = TextSecondary,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -496,33 +494,36 @@ private fun VerdictCard(item: ContentItem) {
 
         Spacer(Modifier.height(Dimens.Spacing12))
 
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(16.dp))
-                .background(SurfaceCardElevated, RoundedCornerShape(16.dp))
-                .border(1.dp, Border, RoundedCornerShape(16.dp))
-                .padding(horizontal = Dimens.Spacing12, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        Surface(
+            shape = MaterialTheme.shapes.medium,
+            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            contentColor = MaterialTheme.colorScheme.onSurface,
         ) {
-            Icon(
-                imageVector = Icons.Default.Star,
-                contentDescription = null,
-                tint = Amber,
-                modifier = Modifier.size(14.dp),
-            )
-            Text(
-                text = average?.formatDecimals1() ?: "—",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = TextPrimary,
-            )
-            Text(
-                text = "MÉDIA",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextSecondary,
-            )
+            Row(
+                modifier = Modifier.padding(
+                    horizontal = Dimens.Spacing12,
+                    vertical = Dimens.Spacing8,
+                ),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Dimens.Spacing8),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(14.dp),
+                )
+                Text(
+                    text = average?.formatDecimals1() ?: "—",
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.ExtraBold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = "MÉDIA",
+                    style = MicroLabelStyle,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
 
         Spacer(Modifier.height(Dimens.Spacing24))
@@ -554,54 +555,47 @@ private fun RatingBox(profile: ProfileName, rating: RatingWithProfile?) {
     BentoTile(
         modifier = Modifier.fillMaxWidth(),
         padding = Dimens.Spacing16,
-        containerColor = Surface,
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(Dimens.Spacing8),
             ) {
                 Avatar(name = profile.displayName, size = Dimens.AvatarMedium)
                 Text(
                     text = profile.displayName,
                     modifier = Modifier.weight(1f),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
                         text = rating?.score?.formatDecimals1() ?: "—",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = TextPrimary,
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.ExtraBold),
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
                         text = " /10",
-                        fontSize = 11.sp,
-                        color = TextMuted,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(Dimens.Spacing12))
 
             Text(
                 text = comment,
-                fontSize = 12.sp,
-                lineHeight = 17.sp,
-                fontStyle = FontStyle.Italic,
-                color = TextSoft,
+                style = CardMetaStyle.copy(fontStyle = FontStyle.Italic),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(Dimens.Spacing12))
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(Border),
+            HorizontalDivider(
+                thickness = Dimens.DividerWidth,
+                color = MaterialTheme.colorScheme.outlineVariant,
             )
 
             Spacer(Modifier.height(Dimens.Spacing8))
@@ -613,13 +607,13 @@ private fun RatingBox(profile: ProfileName, rating: RatingWithProfile?) {
             ) {
                 Text(
                     text = if (rating != null) "Nota em" else "Sem nota",
-                    fontSize = 11.sp,
-                    color = TextSecondary,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     text = rating?.createdAt?.let(::formatDateShort) ?: "—",
-                    fontSize = 11.sp,
-                    color = Amber,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.tertiary,
                 )
             }
         }
@@ -632,13 +626,16 @@ private fun SynopsisCard(overview: String?) {
     BentoCard {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.Spacing12),
         ) {
-            IconDocument(modifier = Modifier.iconSize(18.dp), color = TextSecondary)
+            IconDocument(
+                modifier = Modifier.iconSize(18.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Text(
                 text = "Sinopse",
                 style = MaterialTheme.typography.titleLarge,
-                color = TextPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
 
@@ -646,9 +643,8 @@ private fun SynopsisCard(overview: String?) {
 
         Text(
             text = overview.orEmpty(),
-            fontSize = 13.sp,
-            lineHeight = 20.sp,
-            color = TextSecondary,
+            style = DialogBodyStyle,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -660,129 +656,97 @@ private fun ActionRow(
     onRewatch: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    Row(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(Dimens.Spacing12),
+        verticalArrangement = Arrangement.spacedBy(Dimens.Spacing12),
     ) {
-        ActionButton(
-            label = "Editar Notas",
-            icon = { tint ->
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = null,
-                    tint = tint,
-                    modifier = Modifier.size(15.dp),
-                )
-            },
-            onClick = onEditRatings,
-            modifier = Modifier.weight(1f),
-        )
-        ActionButton(
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.Spacing12),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            AppButton(
+                label = "Editar Notas",
+                onClick = onEditRatings,
+                variant = ButtonVariant.Primary,
+                modifier = Modifier.weight(1f),
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = null,
+                        modifier = Modifier.size(15.dp),
+                    )
+                },
+            )
+
+            // Destructive affordance: the `error` role, and nothing else.
+            Surface(
+                onClick = onDelete,
+                modifier = Modifier.size(Dimens.TouchTarget),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.error,
+                contentColor = MaterialTheme.colorScheme.onError,
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Apagar",
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+        }
+
+        // Secondary action on its own line: two labelled buttons side by side clip the Portuguese
+        // labels on a 360dp-wide screen, so the outlined action gets the full width instead.
+        AppButton(
             label = "Reassistir",
-            icon = { tint ->
+            onClick = onRewatch,
+            variant = ButtonVariant.Outline,
+            modifier = Modifier.fillMaxWidth(),
+            leadingIcon = {
                 Icon(
                     imageVector = Icons.Default.Refresh,
                     contentDescription = null,
-                    tint = tint,
                     modifier = Modifier.size(15.dp),
                 )
             },
-            onClick = onRewatch,
-            modifier = Modifier.weight(1f),
-        )
-
-        val shape = RoundedCornerShape(Dimens.RadiusPill)
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(shape)
-                .background(DangerStrong, shape)
-                .border(1.dp, Border, shape)
-                .clickable(onClick = onDelete),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = "Apagar",
-                tint = White,
-                modifier = Modifier.size(18.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun ActionButton(
-    label: String,
-    icon: @Composable (Color) -> Unit,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val shape = RoundedCornerShape(Dimens.RadiusPill)
-    Row(
-        modifier = modifier
-            .height(48.dp)
-            .clip(shape)
-            .background(SurfaceCard, shape)
-            .border(1.dp, Border, shape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Dimens.Spacing8),
-    ) {
-        icon(TextPrimary)
-        Text(
-            text = label,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = TextPrimary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
         )
     }
 }
 
 /** Informational dialog shown when "Reassistir" is pressed on a title that is still queued. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun QueueNoticeDialog(isTv: Boolean, onDismiss: () -> Unit) {
-    BasicAlertDialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(Dimens.RadiusCard))
-                .background(Surface)
-                .border(1.dp, Border, RoundedCornerShape(Dimens.RadiusCard))
-                .padding(Dimens.Spacing24),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
             Text(
                 text = "Já está na fila",
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary,
+                style = DialogTitleStyle,
                 textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(Dimens.Spacing8))
+        },
+        text = {
             Text(
                 text = if (isTv) {
                     "Esta série ainda não foi marcada como assistida."
                 } else {
                     "Este filme ainda não foi marcado como assistido."
                 },
-                fontSize = 13.sp,
-                lineHeight = 20.sp,
-                color = TextSecondary,
+                style = DialogBodyStyle,
                 textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(Dimens.Spacing24))
-            AppButton(
-                label = "Entendi",
-                onClick = onDismiss,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-    }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = "Entendi")
+            }
+        },
+    )
 }
 
 /** The rating written by [profile], if any. Unknown authors are ignored. */

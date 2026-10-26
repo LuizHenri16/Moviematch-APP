@@ -111,6 +111,8 @@ kotlin {
             implementation(libs.supabase.auth)
             implementation(libs.supabase.realtime)
             implementation(libs.supabase.storage)
+            // SLF4J Android logger so Supabase client logs appear in logcat (otherwise errors are invisible)
+            implementation(libs.slf4j.android)
 
             // kotlinx
             implementation(libs.kotlinx.coroutines.core)
@@ -124,8 +126,6 @@ kotlin {
             // Key/value storage
             implementation(libs.multiplatform.settings)
 
-            // Backdrop blur (floating bottom bar)
-            implementation(libs.haze)
         }
 
         androidMain.dependencies {

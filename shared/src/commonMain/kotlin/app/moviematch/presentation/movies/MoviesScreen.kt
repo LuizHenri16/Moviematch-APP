@@ -1,9 +1,7 @@
 package app.moviematch.presentation.movies
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,53 +11,50 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.moviematch.presentation.common.dataOrNull
 import app.moviematch.presentation.common.errorOrNull
 import app.moviematch.presentation.common.isLoading
+import app.moviematch.presentation.components.AppSmallButton
 import app.moviematch.presentation.components.BentoCard
+import app.moviematch.presentation.components.Chip
+import app.moviematch.presentation.components.ChipTone
 import app.moviematch.presentation.components.HeaderIconButton
 import app.moviematch.presentation.components.IconBadge
 import app.moviematch.presentation.components.Pill
 import app.moviematch.presentation.components.ProgressBar
-import app.moviematch.presentation.components.ScreenHeader
+import app.moviematch.presentation.components.ScreenTopBar
 import app.moviematch.presentation.components.SearchInput
+import app.moviematch.presentation.components.StateEmpty
 import app.moviematch.presentation.components.StateError
-import app.moviematch.presentation.components.StateMessage
 import app.moviematch.presentation.components.icons.IconFilm
 import app.moviematch.presentation.components.icons.IconLogout
 import app.moviematch.presentation.components.icons.IconSize
 import app.moviematch.presentation.components.icons.iconSize
 import app.moviematch.presentation.components.skeletons.MovieCardSkeleton
 import app.moviematch.presentation.navigation.rememberBottomBarBottomPadding
-import app.moviematch.presentation.theme.Accent
-import app.moviematch.presentation.theme.Border
+import app.moviematch.presentation.theme.CardMetaStyle
 import app.moviematch.presentation.theme.Dimens
-import app.moviematch.presentation.theme.Surface
-import app.moviematch.presentation.theme.TextOnAccent
-import app.moviematch.presentation.theme.TextPrimary
-import app.moviematch.presentation.theme.TextSecondary
-import app.moviematch.presentation.theme.White
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.math.roundToInt
 
@@ -70,12 +65,14 @@ import kotlin.math.roundToInt
  * the three filter chips, then the list of [MovieCard]s. Loading renders the same rows as
  * [MovieCardSkeleton] so the list never collapses into a blank frame.
  *
+ * @param onAddMovie opens the "Adicionar" tab, the call to action of the empty state.
  * @param onLogout ends the session; `null` when the app has no Supabase credentials, which hides the
  *   header button instead of offering an action that cannot do anything.
  */
 @Composable
 fun MoviesScreen(
     onOpenDetails: (MovieEntry) -> Unit,
+    onAddMovie: () -> Unit,
     onLogout: (() -> Unit)?,
     modifier: Modifier = Modifier,
     viewModel: MoviesViewModel = koinViewModel(),
@@ -97,8 +94,14 @@ fun MoviesScreen(
     // The header carries the logout action, and only when there is a session to end.
     val headerAction: (@Composable () -> Unit)? = onLogout?.let { logout ->
         {
-            HeaderIconButton(onClick = logout) {
-                IconLogout(modifier = Modifier.iconSize(18.dp), color = TextSecondary)
+            HeaderIconButton(
+                onClick = logout,
+                contentDescription = "Sair da conta",
+            ) {
+                IconLogout(
+                    modifier = Modifier.iconSize(18.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
@@ -108,7 +111,7 @@ fun MoviesScreen(
             .fillMaxSize()
             .statusBarsPadding(),
     ) {
-        ScreenHeader(
+        ScreenTopBar(
             title = "Filmes e Séries",
             subtitle = "Nosso Catálogo",
             action = headerAction,
@@ -164,11 +167,17 @@ fun MoviesScreen(
                 }
 
                 visible.isEmpty() -> item(key = "empty") {
-                    StateMessage(
+                    StateEmpty(
+                        title = if (entries.isEmpty()) "Sua lista está vazia" else "Nada por aqui",
                         message = if (entries.isEmpty()) {
                             "Nenhum título na lista ainda. Adicione o primeiro!"
                         } else {
                             "Nenhum título encontrado com esses filtros."
+                        },
+                        action = if (entries.isEmpty()) {
+                            { AppSmallButton(label = "Adicionar título", onClick = onAddMovie) }
+                        } else {
+                            null
                         },
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -205,51 +214,52 @@ private fun CatalogSummaryCard(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(Dimens.Spacing12),
             ) {
                 IconBadge(size = Dimens.IconBadgeSmall) {
                     IconFilm(
                         modifier = Modifier.iconSize(IconSize.Small),
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
                 }
                 Text(
                     text = "Adicionados",
                     style = MaterialTheme.typography.titleMedium,
-                    color = TextPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
 
             Pill(label = "$total Títulos")
         }
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(Dimens.Spacing12))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
+            val onSurface = MaterialTheme.colorScheme.onSurface
             Text(
                 text = buildAnnotatedString {
                     append("• ")
-                    withStyle(SpanStyle(color = TextPrimary, fontWeight = FontWeight.Bold)) {
+                    withStyle(SpanStyle(color = onSurface, fontWeight = FontWeight.Bold)) {
                         append("$watched assistidos")
                     }
                     append(" ($watchedPercentage%)")
                 },
-                fontSize = 12.sp,
-                color = TextSecondary,
+                style = CardMetaStyle,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 text = "• $watchlist na fila",
-                fontSize = 12.sp,
-                color = TextSecondary,
+                style = CardMetaStyle,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(Dimens.Spacing12))
 
-        ProgressBar(value = watchedPercentage.toDouble(), color = Accent)
+        ProgressBar(value = watchedPercentage.toDouble())
     }
 }
 
@@ -292,22 +302,25 @@ private fun FilterChip(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(Dimens.RadiusPill)
-    val fill = if (selected) White else Surface
+    // The chip itself is 32dp tall; the surrounding box supplies the 48dp touch target.
+    val interactionSource = remember { MutableInteractionSource() }
     Box(
         modifier = Modifier
-            .clip(shape)
-            .background(fill, shape)
-            .border(1.dp, if (selected) White else Border, shape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = Dimens.Spacing16, vertical = 10.dp),
+            .heightIn(min = Dimens.TouchTarget)
+            .selectable(
+                selected = selected,
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Tab,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = label,
-            fontSize = 13.sp,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
-            color = if (selected) TextOnAccent else TextSecondary,
-            textAlign = TextAlign.Center,
+        Chip(
+            label = label,
+            tone = ChipTone.Neutral,
+            selected = selected,
+            interactionSource = interactionSource,
         )
     }
 }

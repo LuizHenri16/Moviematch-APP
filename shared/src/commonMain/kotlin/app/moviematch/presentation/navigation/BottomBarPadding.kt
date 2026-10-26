@@ -9,17 +9,16 @@ import androidx.compose.ui.unit.Dp
 import app.moviematch.presentation.theme.Dimens
 
 /**
- * Bottom padding a scrollable screen must reserve so its last item is not hidden behind the floating
+ * Bottom padding a scrollable screen must reserve so its last item is not hidden behind the
  * [BottomBar].
  *
- * The bar anchors itself to the bottom edge and adds `navigationBarsPadding()` on top of its own
- * [Dimens.BottomBarContentHeight], so the reserved space is: bar height + separation + the system
- * navigation bar inset of the current window.
+ * The MD3 navigation bar is edge-to-edge and consumes the system navigation bar inset inside the
+ * component, so the reserved space is exactly: bar height + the window inset.
  */
 @Composable
 fun rememberBottomBarBottomPadding(): Dp {
     val systemBars = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    return Dimens.BottomBarContentHeight + BottomBarSpacing + systemBars
+    return Dimens.BottomBarContentHeight + systemBars
 }
 
 /** Ready-to-use `contentPadding` for a scrollable screen that lives under the bottom bar. */

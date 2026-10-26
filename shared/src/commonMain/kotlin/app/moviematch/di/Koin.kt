@@ -4,19 +4,28 @@ import app.moviematch.auth.AuthStore
 import app.moviematch.config.Secrets
 import app.moviematch.data.mock.MockData
 import app.moviematch.data.mock.MockMovieRepository
-import app.moviematch.data.supabase.createAppSupabaseClient
-import app.moviematch.data.supabase.createSettings
+import app.moviematch.data.supabase.GroupRepository
 import app.moviematch.data.supabase.ProfileRepository
+import app.moviematch.data.supabase.SupabaseMovieRepository
+import app.moviematch.data.supabase.TmdbClient
+import app.moviematch.data.supabase.createAppSupabaseClient
+import app.moviematch.data.supabase.createHttpEngine
+import app.moviematch.data.supabase.createSettings
+import app.moviematch.data.supabase.createTmdbHttpClient
+import app.moviematch.domain.GroupDataSource
 import app.moviematch.domain.MovieRepository
 import app.moviematch.presentation.addmovie.AddMovieViewModel
 import app.moviematch.presentation.common.ContentSelectionStore
 import app.moviematch.presentation.common.CurrentProfileStore
 import app.moviematch.presentation.details.MovieDetailsViewModel
+import app.moviematch.presentation.group.GroupStore
+import app.moviematch.presentation.group.GroupViewModel
 import app.moviematch.presentation.home.HomeViewModel
 import app.moviematch.presentation.login.LoginViewModel
 import app.moviematch.presentation.movies.MoviesViewModel
 import app.moviematch.presentation.settings.SettingsViewModel
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
@@ -25,12 +34,44 @@ import org.koin.dsl.module
 /**
  * Infrastructure layer.
  *
- * The Supabase client is wired only for auth (`AuthStore` + `public.profiles`), so [MovieRepository]
- * is still bound to the in-memory [MockMovieRepository]. Swapping it for the real implementation is
- * a one-line change here — no screen or `ViewModel` knows which one it is talking to.
+ * [MovieRepository] is bound to the real [SupabaseMovieRepository] as soon as the `.env` carries
+ * Supabase credentials, and to the in-memory [MockMovieRepository] otherwise (clean clone, CI without
+ * secrets). The choice is made here only — no screen or `ViewModel` knows which implementation it is
+ * talking to, which is the reason the contract lives in `domain/`.
+ *
+ * [TmdbClient] is the catalogue HTTP client of the "Adicionar" tab. It is registered unconditionally
+ * but only instantiated when the real repository is, since the offline path never asks for it.
  */
 val dataModule = module {
-    single<MovieRepository> { MockMovieRepository() }
+    single {
+        TmdbClient(
+            httpClient = createTmdbHttpClient(createHttpEngine()),
+            apiKey = Secrets.TMDB_API_KEY,
+        )
+    }
+
+    single<MovieRepository> {
+        if (Secrets.hasSupabaseConfig) {
+            val client = get<SupabaseClient>()
+            SupabaseMovieRepository(
+                supabaseClient = client,
+                tmdb = get(),
+                currentUserId = { client.auth.currentUserOrNull()?.id },
+            )
+        } else {
+            MockMovieRepository()
+        }
+    }
+
+    /**
+     * Group creation/invite flow. It is bound through [GroupDataSource] so the screens depend on the
+     * contract (and can be tested with a fake), and it is only registered when Supabase is
+     * configured. `GroupStore` resolves it with `getOrNull()` and turns the absence into a typed
+     * error instead of a `NoDefinitionFoundException` when Settings/Group are opened offline.
+     */
+    if (Secrets.hasSupabaseConfig) {
+        single<GroupDataSource> { GroupRepository(supabaseClient = get()) }
+    }
 }
 
 /**
@@ -62,16 +103,29 @@ val appModule = module {
 
     /** Stand-in for the navigation arguments of the details screen. */
     single { ContentSelectionStore() }
+
+    /**
+     * Single source of truth of the active "roda", shared by Settings and the group screen.
+     * `getOrNull()` keeps the graph resolvable when Supabase is not configured.
+     */
+    single {
+        GroupStore(
+            repository = getOrNull<GroupDataSource>(),
+            currentProfile = get(),
+            authStore = get(),
+        )
+    }
 }
 
 /** Screen level `ViewModel`s. */
 val viewModelModule = module {
-    viewModel { HomeViewModel(get()) }
+    viewModel { HomeViewModel(get(), get()) }
     viewModel { MoviesViewModel(get()) }
     viewModel { AddMovieViewModel(get()) }
     viewModel { MovieDetailsViewModel(get(), get(), get()) }
-    viewModel { SettingsViewModel(get(), get(), get(), get()) }
+    viewModel { SettingsViewModel(get(), get(), get(), get(), get()) }
     viewModel { LoginViewModel(get()) }
+    viewModel { GroupViewModel(get(), get(), get()) }
 }
 
 /** Everything the app needs, in start order. Shared by the two platform entry points. */

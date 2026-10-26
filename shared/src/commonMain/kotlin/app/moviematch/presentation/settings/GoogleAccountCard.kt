@@ -3,20 +3,17 @@ package app.moviematch.presentation.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 import app.moviematch.auth.AuthState
 import app.moviematch.presentation.components.AppButton
 import app.moviematch.presentation.components.BentoCard
 import app.moviematch.presentation.components.ButtonVariant
-import app.moviematch.presentation.theme.Danger
+import app.moviematch.presentation.theme.DialogBodyStyle
 import app.moviematch.presentation.theme.Dimens
-import app.moviematch.presentation.theme.TextPrimary
-import app.moviematch.presentation.theme.TextSecondary
 
 /**
  * "Conta Google" block of the settings screen: the entry point of the Supabase session.
@@ -40,9 +37,8 @@ internal fun GoogleAccountCard(
         Column(verticalArrangement = Arrangement.spacedBy(Dimens.Spacing8)) {
             Text(
                 text = "Conta Google",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
             )
 
             when (state) {
@@ -70,7 +66,11 @@ internal fun GoogleAccountCard(
                     val error = state as? AuthState.Error
                     Caption(
                         text = error?.message ?: "Entre para manter a roda sincronizada.",
-                        color = if (error != null) Danger else TextSecondary,
+                        color = if (error != null) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                     )
                     AppButton(
                         label = "Entrar com Google",
@@ -84,11 +84,13 @@ internal fun GoogleAccountCard(
 }
 
 @Composable
-private fun Caption(text: String, color: Color = TextSecondary) {
+private fun Caption(
+    text: String,
+    color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+) {
     Text(
         text = text,
-        fontSize = 13.sp,
-        lineHeight = 18.sp,
+        style = DialogBodyStyle,
         color = color,
     )
 }

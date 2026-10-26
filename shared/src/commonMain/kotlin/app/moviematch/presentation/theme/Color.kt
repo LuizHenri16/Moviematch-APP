@@ -1,93 +1,141 @@
 package app.moviematch.presentation.theme
 
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.Color
 
 /**
- * "Serene Bento Dark" brand palette.
+ * Material Design 3 colour system of MovieMatch.
  *
- * These tokens are the single source of truth for colour in the shared UI and mirror the
- * values used by the existing MovieMatch product so both apps stay visually identical.
+ * The app no longer owns a hand-made "glass" palette: every colour is a **Material 3 role**
+ * (`primary`, `onSurface`, `surfaceContainerHigh`, `errorContainer`, …) produced from the brand
+ * seed [BrandSeed] with the official Material tonal-palette algorithm. The two schemes below are the
+ * static fallback used on every platform; on Android 12+ [dynamicColorScheme] replaces them with the
+ * wallpaper-derived palette (Material You).
+ *
+ * Rules that the whole UI follows:
+ * * text and icons always use the `on*` role of the surface they sit on;
+ * * borders and dividers use [ColorScheme.outlineVariant]; [ColorScheme.outline] is reserved for
+ *   emphasised boundaries (focused fields, outlined buttons);
+ * * elevation is expressed with the `surfaceContainer*` tones, not with shadows;
+ * * [ColorScheme.error]/`errorContainer` are the only destructive colours.
  */
-
-// --- Canvas & containers ---------------------------------------------------------------
-val Background = Color(0xFF14171A)
-val Surface = Color(0xFF222222)
-val SurfaceRaised = Color(0xFF222222)
-val SurfaceDeep = Color(0xFF0B0E11)
-val SurfaceCard = Color(0xFF1C2127)
-val SurfaceCardElevated = Color(0xFF252B33)
-
-/** Hairline outline used by dark-on-dark bento containers: `rgba(255, 255, 255, 0.07)`. */
-val Border = Color(0x12FFFFFF)
-val Divider = Border
-
-/** Slightly stronger hairline used by the details hero (`rgba(255, 255, 255, 0.1)`). */
-val BorderStrong = Color(0x1AFFFFFF)
-
-/** Muted structural outline (`#414943`) — the unchecked circle of a `MovieCard`. */
-val Outline = Color(0xFF414943)
-
-/** Hero canvas of the details screen (`#11161a`). */
-val SurfaceHero = Color(0xFF11161A)
-
-/** Translucent dark chrome floating on top of imagery (`rgba(28, 33, 39, 0.9)`). */
-val ChromeSurface = Color(0xE61C2127)
-
-/** Lavender-tinted chrome of the poster category badge (`rgba(38, 28, 48, 0.85)`). */
-val CategoryBadgeSurface = Color(0xD9261C30)
-val CategoryBadgeBorder = Color(0x33C4B5FD)
-
-/** Neutral translucent chip used by the media-type badge of the "Adicionar" rows. */
-val ChipSurface = Color(0x14FFFFFF)
-val ChipBorder = Color(0x1FFFFFFF)
-
-/** Scrim stops of the details hero gradient (`rgba(11, 14, 17, 0.36)` -> `0.92`). */
-val HeroScrimMid = Color(0x5C0B0E11)
-val HeroScrimBottom = Color(0xEB0B0E11)
-
-// --- Typography ------------------------------------------------------------------------
-val TextPrimary = Color(0xFFF8FAFC)
-val TextSecondary = Color(0xFF94A3B8)
-val TextMuted = Color(0xFF8A938C)
-val TextSoft = Color(0xFFE1E2E6)
-
-/** Deep slate used on top of the pastel (accent) bento blocks. */
-val TextOnAccent = Color(0xFF0F172A)
-
-// --- Accents ---------------------------------------------------------------------------
-val Accent = Color(0xFF9DD2B3)
-val AccentDark = Color(0xFF003823)
-val AccentDeep = Color(0xFF2A5C43)
-val Lavender = Color(0xFFC4B5FD)
-val LavenderSurface = Color(0x1FC4B5FD)
-val LavenderBorder = Color(0x59C4B5FD)
-val Amber = Color(0xFFFDE047)
-val White = Color(0xFFFFFFFF)
-
-// --- Feedback --------------------------------------------------------------------------
-val Danger = Color(0xFFFFB4AB)
-val DangerStrong = Color(0xFFDC2626)
-val DangerSurface = Color(0x1FFFB4AB)
-val DangerBorder = Color(0x73FFB4AB)
-
-// --- Avatars ---------------------------------------------------------------------------
-val AvatarMaria = Color(0xFF4A3D7C)
-val AvatarLuiz = Color(0xFF2A5C43)
-
-/** Background tint used by the average-rating badge when the score is excellent (>= 8). */
-val ScoreGreatSurface = Color(0xFF14261D)
-val ScoreGreatBorder = Color(0x599DD2B3)
-val ScoreGoodSurface = Color(0xFF252114)
-val ScoreGoodBorder = Color(0x59FDE047)
-val ScoreBadSurface = Color(0xFF251517)
-val ScoreBadBorder = Color(0x59FDA4AF)
-val ScoreBad = Color(0xFFFDA4AF)
+val BrandSeed = Color(0xFF7DD3FC)
 
 /**
- * Avatar background for a profile. Falls back to the "Luiz" lane for unknown names, which is
- * what the reference implementation does.
+ * Light scheme — seed `#7DD3FC`.
+ *
+ * Generated with `@material/material-color-utilities` (`SchemeTonalSpot`, the default of the Material
+ * Theme Builder). Do not edit a role by hand: regenerate the whole scheme from the seed instead.
  */
-fun avatarColor(name: String?): Color = if (name == "Maria") AvatarMaria else AvatarLuiz
+internal val MovieMatchLightColorScheme: ColorScheme = lightColorScheme(
+    primary = Color(0xFF006686),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFC0E8FF),
+    onPrimaryContainer = Color(0xFF001E2B),
+    inversePrimary = Color(0xFF6FD2FF),
+    secondary = Color(0xFF4D616C),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFD0E6F3),
+    onSecondaryContainer = Color(0xFF091E27),
+    tertiary = Color(0xFF5E5A7D),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFE4DFFF),
+    onTertiaryContainer = Color(0xFF1B1736),
+    background = Color(0xFFFBFCFE),
+    onBackground = Color(0xFF191C1E),
+    surface = Color(0xFFFBFCFE),
+    onSurface = Color(0xFF191C1E),
+    surfaceVariant = Color(0xFFDCE3E9),
+    onSurfaceVariant = Color(0xFF40484C),
+    surfaceTint = Color(0xFF006686),
+    surfaceDim = Color(0xFFD9DADC),
+    surfaceBright = Color(0xFFF8F9FB),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF2F4F6),
+    surfaceContainer = Color(0xFFEDEEF0),
+    surfaceContainerHigh = Color(0xFFE7E8EA),
+    surfaceContainerHighest = Color(0xFFE1E2E5),
+    inverseSurface = Color(0xFF2E3133),
+    inverseOnSurface = Color(0xFFF0F1F3),
+    error = Color(0xFFBA1A1A),
+    onError = Color(0xFFFFFFFF),
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF410002),
+    outline = Color(0xFF71787D),
+    outlineVariant = Color(0xFFC0C7CD),
+    scrim = Color(0xFF000000),
+)
+
+/**
+ * Dark scheme — same seed.
+ *
+ * This is the "cinema room" mode of the brand, now expressed with MD3 surface containers instead of
+ * translucent glass sheets.
+ */
+internal val MovieMatchDarkColorScheme: ColorScheme = darkColorScheme(
+    primary = Color(0xFF6FD2FF),
+    onPrimary = Color(0xFF003547),
+    primaryContainer = Color(0xFF004D66),
+    onPrimaryContainer = Color(0xFFC0E8FF),
+    inversePrimary = Color(0xFF006686),
+    secondary = Color(0xFFB4CAD6),
+    onSecondary = Color(0xFF1F333D),
+    secondaryContainer = Color(0xFF364954),
+    onSecondaryContainer = Color(0xFFD0E6F3),
+    tertiary = Color(0xFFC7C2EA),
+    onTertiary = Color(0xFF302D4C),
+    tertiaryContainer = Color(0xFF464364),
+    onTertiaryContainer = Color(0xFFE4DFFF),
+    background = Color(0xFF191C1E),
+    onBackground = Color(0xFFE1E2E5),
+    surface = Color(0xFF191C1E),
+    onSurface = Color(0xFFE1E2E5),
+    surfaceVariant = Color(0xFF40484C),
+    onSurfaceVariant = Color(0xFFC0C7CD),
+    surfaceTint = Color(0xFF6FD2FF),
+    surfaceDim = Color(0xFF111415),
+    surfaceBright = Color(0xFF37393B),
+    surfaceContainerLowest = Color(0xFF0C0F10),
+    surfaceContainerLow = Color(0xFF191C1E),
+    surfaceContainer = Color(0xFF1D2022),
+    surfaceContainerHigh = Color(0xFF282A2C),
+    surfaceContainerHighest = Color(0xFF323537),
+    inverseSurface = Color(0xFFE1E2E5),
+    inverseOnSurface = Color(0xFF2E3133),
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFB4AB),
+    outline = Color(0xFF8A9297),
+    outlineVariant = Color(0xFF40484C),
+    scrim = Color(0xFF000000),
+)
+
+/**
+ * Container of a profile avatar.
+ *
+ * The two members of a pair get the two expressive lanes of the scheme (`primaryContainer` and
+ * `tertiaryContainer`), which follow light/dark and dynamic colour automatically. Maria keeps the
+ * blue lane, everyone else gets the lilac one — the same split the previous palette encoded.
+ */
+@Composable
+fun avatarColor(name: String?): Color = if (name == "Maria") {
+    MaterialTheme.colorScheme.primaryContainer
+} else {
+    MaterialTheme.colorScheme.tertiaryContainer
+}
+
+/** Content colour that pairs with [avatarColor]; always an `on*Container` role. */
+@Composable
+fun avatarContentColor(name: String?): Color = if (name == "Maria") {
+    MaterialTheme.colorScheme.onPrimaryContainer
+} else {
+    MaterialTheme.colorScheme.onTertiaryContainer
+}
 
 /** First letter of the display name, uppercased — used when there is no avatar image. */
 fun avatarInitial(name: String?): String = (name?.take(1) ?: "?").uppercase()

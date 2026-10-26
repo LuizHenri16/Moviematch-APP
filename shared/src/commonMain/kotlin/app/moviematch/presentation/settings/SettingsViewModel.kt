@@ -9,10 +9,12 @@ import app.moviematch.data.supabase.AVATAR_URL_FORMAT_ERROR
 import app.moviematch.data.supabase.ProfileRepository
 import app.moviematch.data.supabase.isAvatarUrlValid
 import app.moviematch.domain.MovieRepository
+import app.moviematch.domain.model.Group
 import app.moviematch.domain.model.Profile
 import app.moviematch.presentation.common.CurrentProfileStore
 import app.moviematch.presentation.common.UiState
 import app.moviematch.presentation.common.uiStateOf
+import app.moviematch.presentation.group.GroupStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,8 +23,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
- * Settings screen: shows the signed-in profile, the Google account entry point and the avatar URL
- * form.
+ * Settings screen: shows the signed-in profile, the Google account entry point, the avatar URL
+ * form, and the group info (invite code, partner) when the member has an active group.
  *
  * The screen keeps working without a session: [CurrentProfileStore] still holds the seeded profile
  * and [authState] is the only extra thing it renders (the sign-in/sign-out button). Saving the photo
@@ -31,6 +33,7 @@ import kotlinx.coroutines.launch
  */
 class SettingsViewModel(
     private val repository: MovieRepository,
+    private val groupStore: GroupStore,
     private val currentProfile: CurrentProfileStore,
     private val authStore: AuthStore,
     private val profileRepository: ProfileRepository,
@@ -38,6 +41,12 @@ class SettingsViewModel(
 
     private val _state = MutableStateFlow<UiState<Profile>>(UiState.Loading)
     val state: StateFlow<UiState<Profile>> = _state.asStateFlow()
+
+    /**
+     * The shared group state, forwarded from [GroupStore] so the "Minha roda" card reacts to a
+     * mutation made in the group screen without reloading this screen.
+     */
+    val groupState: StateFlow<UiState<Group?>> = groupStore.groupState
 
     private val _urlInput = MutableStateFlow("")
     val urlInput: StateFlow<String> = _urlInput.asStateFlow()
@@ -64,15 +73,20 @@ class SettingsViewModel(
             _state.value = UiState.Loading
             _state.value = uiStateOf("Não foi possível carregar seu perfil.") {
                 val current = currentProfile.profile.first()
-                // [MovieRepository] is still the mock one, so a profile that came from Supabase
-                // (a UUID) is simply not in it: the store is the source of truth and the repository
-                // is only the offline seed.
+                // The repository returns whatever `public.profiles` exposes (self + active partner);
+                // a profile that came from the local seed or a fallback token claim may not be there,
+                // in which case the store stays the source of truth.
                 repository.profiles().firstOrNull { it.id == current.id } ?: current
             }.also { result ->
                 val profile = (result as? UiState.Content)?.data
                 _urlInput.value = profile?.avatarUrl.orEmpty()
             }
         }
+    }
+
+    /** Retries the shared group state behind the "Minha roda" card. */
+    fun reloadGroup() {
+        viewModelScope.launch { groupStore.refresh() }
     }
 
     /** Starts the native Google flow; the provider comes from `rememberGoogleSignInProvider()`. */

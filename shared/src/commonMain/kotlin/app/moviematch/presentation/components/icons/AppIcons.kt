@@ -16,15 +16,15 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import app.moviematch.presentation.theme.TextSecondary
+import androidx.compose.material3.MaterialTheme
 
 /**
  * Hand-drawn, monochrome line icons.
  *
- * The design system ("Serene Bento Dark") is built on ~2px stroke icons with round caps — the
- * reference app gets them from `lucide-react-native`. `material-icons-core` only ships a small,
- * *filled* icon set, and pulling `material-icons-extended` in for a handful of glyphs would add
- * megabytes to both apps, so the icons the bento cards need are drawn here with `Canvas`.
+ * The Material 3 icon set of MovieMatch is drawn on the same 24x24 grid as Material Symbols, with
+ * ~1.8-unit strokes, round caps and round joins. `material-icons-core` only ships a small, *filled*
+ * set, and pulling `material-icons-extended` in for a handful of glyphs would add megabytes to both
+ * apps, so the glyphs the cards need are drawn here with `Canvas`.
  *
  * Every icon is authored on a 24x24 grid and scales to whatever size the caller requests, so the
  * visual weight stays constant at any density.
@@ -46,7 +46,7 @@ private fun DrawScope.stroke(width: Float = 1.8f): Stroke {
 
 /** Chevron pointing left — the "back" affordance in detail screens. */
 @Composable
-fun IconChevronLeft(modifier: Modifier = Modifier, color: Color = TextSecondary) {
+fun IconChevronLeft(modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Canvas(modifier = modifier) {
         val w = u() * 2f
         drawLine(color, at(15f, 5f), at(9f, 12f), w, StrokeCap.Round)
@@ -56,7 +56,7 @@ fun IconChevronLeft(modifier: Modifier = Modifier, color: Color = TextSecondary)
 
 /** Chevron pointing right — list rows and "open" affordances. */
 @Composable
-fun IconChevronRight(modifier: Modifier = Modifier, color: Color = TextSecondary) {
+fun IconChevronRight(modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Canvas(modifier = modifier) {
         val w = u() * 2f
         drawLine(color, at(9f, 5f), at(15f, 12f), w, StrokeCap.Round)
@@ -66,7 +66,7 @@ fun IconChevronRight(modifier: Modifier = Modifier, color: Color = TextSecondary
 
 /** Clapperboard — "Termômetro de Pipoca" header badge. */
 @Composable
-fun IconClapperboard(modifier: Modifier = Modifier, color: Color = TextSecondary) {
+fun IconClapperboard(modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Canvas(modifier = modifier) {
         val unit = u()
         val style = stroke()
@@ -92,7 +92,7 @@ fun IconClapperboard(modifier: Modifier = Modifier, color: Color = TextSecondary
 
 /** Flame — "Duelo de Críticos" fun-fact badge. */
 @Composable
-fun IconFlame(modifier: Modifier = Modifier, color: Color = TextSecondary) {
+fun IconFlame(modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Canvas(modifier = modifier) {
         val unit = u()
         val path = Path().apply {
@@ -110,7 +110,7 @@ fun IconFlame(modifier: Modifier = Modifier, color: Color = TextSecondary) {
 
 /** Film strip — movie cards and the poster placeholder glyph. */
 @Composable
-fun IconFilm(modifier: Modifier = Modifier, color: Color = TextSecondary) {
+fun IconFilm(modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Canvas(modifier = modifier) {
         val unit = u()
         drawRoundRect(
@@ -129,7 +129,7 @@ fun IconFilm(modifier: Modifier = Modifier, color: Color = TextSecondary) {
 
 /** Television — tags series in search results and list rows. */
 @Composable
-fun IconTv(modifier: Modifier = Modifier, color: Color = TextSecondary) {
+fun IconTv(modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Canvas(modifier = modifier) {
         val unit = u()
         drawRoundRect(
@@ -146,7 +146,7 @@ fun IconTv(modifier: Modifier = Modifier, color: Color = TextSecondary) {
 
 /** Document — "Sinopse" section header. */
 @Composable
-fun IconDocument(modifier: Modifier = Modifier, color: Color = TextSecondary) {
+fun IconDocument(modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Canvas(modifier = modifier) {
         val unit = u()
         drawRoundRect(
@@ -164,7 +164,7 @@ fun IconDocument(modifier: Modifier = Modifier, color: Color = TextSecondary) {
 
 /** Arrow leaving a frame — the logout affordance. */
 @Composable
-fun IconLogout(modifier: Modifier = Modifier, color: Color = TextSecondary) {
+fun IconLogout(modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Canvas(modifier = modifier) {
         val unit = u()
         val frame = Path().apply {
@@ -184,7 +184,7 @@ fun IconLogout(modifier: Modifier = Modifier, color: Color = TextSecondary) {
 
 /** Smiling face — "comédia/animação" genres. */
 @Composable
-fun IconSmile(modifier: Modifier = Modifier, color: Color = TextSecondary) {
+fun IconSmile(modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Canvas(modifier = modifier) {
         val unit = u()
         val style = stroke()
@@ -205,7 +205,7 @@ fun IconSmile(modifier: Modifier = Modifier, color: Color = TextSecondary) {
 
 /** Sad face — "terror/suspense" genres. */
 @Composable
-fun IconFrown(modifier: Modifier = Modifier, color: Color = TextSecondary) {
+fun IconFrown(modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Canvas(modifier = modifier) {
         val unit = u()
         val style = stroke()
@@ -226,7 +226,7 @@ fun IconFrown(modifier: Modifier = Modifier, color: Color = TextSecondary) {
 
 /** Compass — adventure/action/sci-fi genres. */
 @Composable
-fun IconCompass(modifier: Modifier = Modifier, color: Color = TextSecondary) {
+fun IconCompass(modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Canvas(modifier = modifier) {
         val unit = u()
         val style = stroke()
@@ -241,7 +241,7 @@ fun IconCompass(modifier: Modifier = Modifier, color: Color = TextSecondary) {
 
 /** Heart — drama/romance genres. */
 @Composable
-fun IconHeart(modifier: Modifier = Modifier, color: Color = TextSecondary) {
+fun IconHeart(modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Canvas(modifier = modifier) {
         val unit = u()
         val path = Path().apply {
@@ -258,7 +258,7 @@ fun IconHeart(modifier: Modifier = Modifier, color: Color = TextSecondary) {
 
 /** Three dots — the "mais opções" affordance in headers. */
 @Composable
-fun IconMore(modifier: Modifier = Modifier, color: Color = TextSecondary) {
+fun IconMore(modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Canvas(modifier = modifier) {
         listOf(6f, 12f, 18f).forEach { x ->
             drawCircle(color, radius = u() * 1.4f, center = at(x, 12f))
@@ -268,7 +268,7 @@ fun IconMore(modifier: Modifier = Modifier, color: Color = TextSecondary) {
 
 /** Ticket — the brand mark of the login screen ("Movie Match"). */
 @Composable
-fun IconTicket(modifier: Modifier = Modifier, color: Color = TextSecondary) {
+fun IconTicket(modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Canvas(modifier = modifier) {
         val unit = u()
         drawRoundRect(
@@ -287,7 +287,7 @@ fun IconTicket(modifier: Modifier = Modifier, color: Color = TextSecondary) {
 
 /** Padlock — the "só vocês dois" badge of the login profile card. */
 @Composable
-fun IconLock(modifier: Modifier = Modifier, color: Color = TextSecondary) {
+fun IconLock(modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Canvas(modifier = modifier) {
         val unit = u()
         val style = stroke(1.6f)
@@ -312,7 +312,7 @@ fun IconLock(modifier: Modifier = Modifier, color: Color = TextSecondary) {
 
 /** Chain link — the avatar URL field of the settings screen. */
 @Composable
-fun IconLink(modifier: Modifier = Modifier, color: Color = TextSecondary) {
+fun IconLink(modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Canvas(modifier = modifier) {
         val unit = u()
         val style = stroke(1.6f)

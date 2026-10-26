@@ -10,14 +10,18 @@ import app.moviematch.domain.model.WatchStatus
 /**
  * Data access contract consumed by the `ViewModel`s.
  *
- * The only implementation today is [app.moviematch.data.mock.MockMovieRepository]; the Supabase one
- * will be dropped in later without any screen change, which is the whole point of keeping this
- * interface free of framework types.
+ * Two implementations live in `data/`: [app.moviematch.data.supabase.SupabaseMovieRepository] (the
+ * real backend, selected when the `.env` carries Supabase credentials) and
+ * [app.moviematch.data.mock.MockMovieRepository] (the offline seed). The binding is decided once in
+ * the Koin `dataModule`, which is the whole point of keeping this interface free of framework types.
  */
 interface MovieRepository {
 
-    /** The two people of the group plus the group itself. */
-    suspend fun group(): Group
+    /**
+     * The two people of the group plus the group itself, or `null` when the signed-in member has no
+     * active group yet. Callers that need a group must handle the absence instead of assuming one.
+     */
+    suspend fun group(): Group?
 
     suspend fun profiles(): List<Profile>
 
@@ -26,7 +30,7 @@ interface MovieRepository {
 
     suspend fun contentItem(id: String): ContentItem?
 
-    /** Titles marked as watched, used by "Sortear Filme" to pick from the queue. */
+    /** Picks one title still waiting to be watched, used by "Sortear Filme". */
     suspend fun randomPending(): ContentItem?
 
     /** TMDb-style search used by the "Adicionar" screen. */

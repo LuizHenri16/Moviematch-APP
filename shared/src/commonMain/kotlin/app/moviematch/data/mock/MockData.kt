@@ -11,13 +11,16 @@ import app.moviematch.domain.model.SearchResult
 import app.moviematch.domain.model.WatchStatus
 
 /**
- * Example data used while the Supabase backend is not wired yet.
+ * Example data backing [MockMovieRepository], the offline fallback used when the `.env` has no
+ * Supabase credentials (with a configured backend the Koin `dataModule` binds
+ * [app.moviematch.data.supabase.SupabaseMovieRepository] instead).
  *
  * The numbers were chosen so every bento card has something meaningful to show: the harmony index
  * sits at 60%, the critics' average differs by 1.4 points and four titles are still queued.
  *
- * Poster URLs are intentionally `null`: the app must render fully offline, and every poster surface
- * falls back to a deterministic placeholder until real TMDb paths arrive from the backend.
+ * Poster URLs are intentionally `null`: the seed must render fully offline, and every poster surface
+ * falls back to a deterministic placeholder. The real backend fills the same field with a full
+ * `https://image.tmdb.org/t/p/...` URL coming from the TMDb `poster_path`.
  */
 object MockData {
 
@@ -216,6 +219,11 @@ object MockData {
         ),
     )
 
+    /**
+     * Offline stand-in for the TMDb lookup used by [MockMovieRepository.search]: a blank query
+     * returns nothing and the rest is a case-insensitive substring match, the same contract as the
+     * real client.
+     */
     fun searchCatalog(query: String): List<SearchResult> {
         val term = query.trim().lowercase()
         if (term.isEmpty()) return emptyList()

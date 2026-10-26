@@ -33,7 +33,6 @@ compose-material-icons = "1.7.3"
 compose-material3 = "1.11.0-alpha07"
 compose-multiplatform = "1.11.1"
 googleid = "1.2.1"
-haze = "1.7.2"
 koin = "4.2.2"
 kotlin = "2.4.10"
 kotlinx-coroutines = "1.11.0"
@@ -64,9 +63,6 @@ compose-uiTooling = { module = "org.jetbrains.compose.ui:ui-tooling", version.re
 compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "compose-multiplatform" }
 compose-material-icons-core = { module = "org.jetbrains.compose.material:material-icons-core", version.ref = "compose-material-icons" }
 
-# --- Backdrop blur (floating bottom bar) ---
-haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
-
 # --- Navigation ---
 navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "androidx-navigation" }
 
@@ -86,10 +82,13 @@ ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "kto
 ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 
 # --- Supabase (Kotlin Multiplatform SDK) ---
+# --- Supabase (Kotlin Multiplatform SDK) ---
 supabase-postgrest = { module = "io.github.jan-tennert.supabase:postgrest-kt", version.ref = "supabase" }
 supabase-auth = { module = "io.github.jan-tennert.supabase:auth-kt", version.ref = "supabase" }
 supabase-realtime = { module = "io.github.jan-tennert.supabase:realtime-kt", version.ref = "supabase" }
 supabase-storage = { module = "io.github.jan-tennert.supabase:storage-kt", version.ref = "supabase" }
+# SLF4J Android logger so Supabase client logs appear in logcat (otherwise errors are invisible)
+slf4j-android = { module = "org.slf4j:slf4j-android", version = "1.7.36" }
 
 # --- Images ---
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }

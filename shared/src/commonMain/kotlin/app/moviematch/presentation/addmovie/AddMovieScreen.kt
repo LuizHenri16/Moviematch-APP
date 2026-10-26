@@ -1,10 +1,6 @@
 package app.moviematch.presentation.addmovie
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,58 +13,57 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.moviematch.domain.model.ContentType
 import app.moviematch.domain.model.SearchResult
 import app.moviematch.presentation.common.dataOrNull
+import app.moviematch.presentation.common.errorOrNull
 import app.moviematch.presentation.common.formatDecimals1
-import app.moviematch.presentation.components.BentoCard
+import app.moviematch.presentation.components.AppSmallButton
+import app.moviematch.presentation.components.Chip
+import app.moviematch.presentation.components.ChipSize
+import app.moviematch.presentation.components.ChipTone
 import app.moviematch.presentation.components.PosterImage
+import app.moviematch.presentation.components.ScreenTopBar
 import app.moviematch.presentation.components.SearchInput
 import app.moviematch.presentation.components.icons.IconFilm
-import app.moviematch.presentation.components.icons.IconSize
 import app.moviematch.presentation.components.icons.IconTv
 import app.moviematch.presentation.components.icons.iconSize
 import app.moviematch.presentation.components.skeletons.SearchResultsSkeleton
 import app.moviematch.presentation.navigation.rememberBottomBarBottomPadding
-import app.moviematch.presentation.theme.ChipBorder
-import app.moviematch.presentation.theme.ChipSurface
-import app.moviematch.presentation.theme.Danger
-import app.moviematch.presentation.theme.DangerBorder
-import app.moviematch.presentation.theme.DangerSurface
+import app.moviematch.presentation.theme.CardMetaStyle
+import app.moviematch.presentation.theme.DialogBodyStyle
 import app.moviematch.presentation.theme.Dimens
-import app.moviematch.presentation.theme.TextMuted
-import app.moviematch.presentation.theme.TextOnAccent
-import app.moviematch.presentation.theme.TextPrimary
-import app.moviematch.presentation.theme.TextSecondary
-import app.moviematch.presentation.theme.White
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
  * "Adicionar" tab: searches the catalogue and adds a title to the shared list.
  *
- * Ported from the reference `AddMovieScreen`: a debounced search field (spinner while the request is
- * in flight), an inline error box, and one row per hit with the media-type chip and the add button —
- * the hit currently being added is the only one whose button shows a spinner.
+ * Ported from the reference `AddMovieScreen`: a debounced search field (spinner while the request
+ * is in flight), an inline error surface, and one card per hit with the media-type chip and the
+ * add button — the hit currently being added is the only one whose button shows a spinner.
  */
 @Composable
 fun AddMovieScreen(
@@ -94,79 +89,89 @@ fun AddMovieScreen(
         }
     }
 
+    val searchError = resultsState.errorOrNull()
+
+    // Keep the previous hits on screen while the next search runs; the skeleton is only shown when
+    // there is nothing to keep (first search / empty history).
+    var lastResults by remember { mutableStateOf<List<SearchResult>>(emptyList()) }
+    LaunchedEffect(results, searching) {
+        if (!searching && results.isNotEmpty()) lastResults = results
+    }
+    val displayResults = if (searching && lastResults.isNotEmpty()) lastResults else results
+
     Column(
         modifier = modifier
             .fillMaxSize()
-            .statusBarsPadding()
-            .padding(
-                start = Dimens.ScreenPadding,
-                end = Dimens.ScreenPadding,
-                top = Dimens.Spacing24,
-            ),
+            .statusBarsPadding(),
     ) {
-        Text(
-            text = "Adicionar Filme ou Série",
-            style = MaterialTheme.typography.headlineMedium,
-            color = TextPrimary,
-        )
-        Spacer(Modifier.height(Dimens.Spacing8))
-        Text(
-            text = "Procure para adicionar à lista.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextSecondary,
+        ScreenTopBar(
+            title = "Adicionar Filme ou Série",
+            subtitle = "Procure para adicionar à lista.",
         )
 
-        Spacer(Modifier.height(20.dp))
-
-        SearchInput(
-            value = query,
-            onValueChange = viewModel::onQueryChange,
-            placeholder = "Buscar filme ou série no TMDb...",
-            trailing = {
-                if (searching) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(IconSize.Small),
-                        color = TextMuted,
-                        strokeWidth = 2.dp,
-                    )
-                }
-            },
-        )
-
-        Spacer(Modifier.height(Dimens.Spacing16))
-
-        if (error != null) {
-            ErrorBox(message = error.orEmpty())
-            Spacer(Modifier.height(Dimens.Spacing16))
-        }
-
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = rememberBottomBarBottomPadding()),
-            verticalArrangement = Arrangement.spacedBy(Dimens.Spacing12),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = Dimens.ScreenPadding),
         ) {
-            if (searching && term.isNotEmpty()) {
-                item(key = "skeleton") { SearchResultsSkeleton() }
-            } else {
-                items(
-                    items = results,
-                    key = { result -> viewModel.keyOf(result) },
-                ) { result ->
-                    SearchResultRow(
-                        result = result,
-                        adding = addingId == viewModel.keyOf(result),
-                        enabled = addingId == null,
-                        onAdd = { viewModel.add(result) },
-                    )
-                }
-
-                if (term.isEmpty()) {
-                    item(key = "hint") {
-                        EmptyHint("Digite um título para buscar filmes ou séries no TMDb.")
+            SearchInput(
+                value = query,
+                onValueChange = viewModel::onQueryChange,
+                placeholder = "Buscar filme ou série no TMDb...",
+                trailing = {
+                    if (searching) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(14.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            strokeWidth = 2.dp,
+                        )
                     }
-                } else if (results.isEmpty() && error == null) {
-                    item(key = "no-results") {
-                        EmptyHint("Nenhum resultado encontrado.")
+                },
+            )
+
+            Spacer(Modifier.height(Dimens.Spacing16))
+
+            if (searchError != null) {
+                ErrorBox(
+                    message = searchError,
+                    onRetry = { viewModel.onQueryChange(query) },
+                )
+                Spacer(Modifier.height(Dimens.Spacing16))
+            } else if (error != null) {
+                ErrorBox(message = error.orEmpty())
+                Spacer(Modifier.height(Dimens.Spacing16))
+            }
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    bottom = rememberBottomBarBottomPadding(),
+                ),
+                verticalArrangement = Arrangement.spacedBy(Dimens.Spacing12),
+            ) {
+                if (searching && term.isNotEmpty() && displayResults.isEmpty()) {
+                    item(key = "skeleton") { SearchResultsSkeleton() }
+                } else {
+                    items(
+                        items = displayResults,
+                        key = { result -> viewModel.keyOf(result) },
+                    ) { result ->
+                        SearchResultRow(
+                            result = result,
+                            adding = addingId == viewModel.keyOf(result),
+                            enabled = addingId == null,
+                            onAdd = { viewModel.add(result) },
+                        )
+                    }
+
+                    if (term.isEmpty()) {
+                        item(key = "hint") {
+                            EmptyHint("Digite um título para buscar filmes ou séries no TMDb.")
+                        }
+                    } else if (displayResults.isEmpty() && error == null && searchError == null) {
+                        item(key = "no-results") {
+                            EmptyHint("Nenhum resultado encontrado.")
+                        }
                     }
                 }
             }
@@ -187,9 +192,19 @@ private fun SearchResultRow(
         result.voteAverage?.let { "TMDb ${it.formatDecimals1()}" },
     ).joinToString(" • ")
 
-    BentoCard(padding = Dimens.Spacing12) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = Dimens.ElevationRow),
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(Dimens.Spacing12),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Dimens.Spacing12),
         ) {
@@ -212,7 +227,7 @@ private fun SearchResultRow(
                     Text(
                         text = result.title,
                         style = MaterialTheme.typography.titleSmall,
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
@@ -223,8 +238,8 @@ private fun SearchResultRow(
                 if (meta.isNotEmpty()) {
                     Text(
                         text = meta,
-                        fontSize = 12.sp,
-                        color = TextSecondary,
+                        style = CardMetaStyle,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -233,9 +248,8 @@ private fun SearchResultRow(
                 if (result.overview.isNotBlank()) {
                     Text(
                         text = result.overview,
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
-                        color = TextMuted,
+                        style = CardMetaStyle,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -250,80 +264,77 @@ private fun SearchResultRow(
 @Composable
 private fun MediaTypeBadge(type: ContentType) {
     val isSeries = type == ContentType.TV
-    val shape = RoundedCornerShape(Dimens.RadiusPill)
-    Row(
-        modifier = Modifier
-            .clip(shape)
-            .background(ChipSurface, shape)
-            .border(1.dp, ChipBorder, shape)
-            .padding(horizontal = Dimens.Spacing8, vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Dimens.Spacing4),
-    ) {
-        if (isSeries) {
-            IconTv(modifier = Modifier.iconSize(14.dp), color = TextSecondary)
-        } else {
-            IconFilm(modifier = Modifier.iconSize(14.dp), color = TextSecondary)
-        }
-        Text(
-            text = if (isSeries) "SÉRIE" else "FILME",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.4.sp,
-            color = TextSecondary,
-        )
-    }
+    Chip(
+        label = if (isSeries) "Série" else "Filme",
+        size = ChipSize.Small,
+        tone = ChipTone.Lavender,
+        leadingIcon = {
+            val iconColor = MaterialTheme.colorScheme.onTertiaryContainer
+            if (isSeries) {
+                IconTv(modifier = Modifier.iconSize(14.dp), color = iconColor)
+            } else {
+                IconFilm(modifier = Modifier.iconSize(14.dp), color = iconColor)
+            }
+        },
+    )
 }
 
+/** Primary action of a search hit: a MD3 [FilledIconButton] (40dp inside its 48dp target). */
 @Composable
 private fun AddButton(
     adding: Boolean,
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    Box(
-        modifier = Modifier
-            .size(Dimens.IconButtonSize)
-            .clip(CircleShape)
-            .background(if (enabled) White else White.copy(alpha = 0.5f), CircleShape)
-            .clickable(enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center,
+    FilledIconButton(
+        onClick = onClick,
+        modifier = Modifier.size(Dimens.IconButtonSize),
+        enabled = enabled,
+        shape = MaterialTheme.shapes.small,
     ) {
         if (adding) {
             CircularProgressIndicator(
                 modifier = Modifier.size(18.dp),
-                color = TextOnAccent,
+                color = LocalContentColor.current,
                 strokeWidth = 2.dp,
             )
         } else {
             Icon(
                 imageVector = Icons.Default.Add,
                 contentDescription = "Adicionar",
-                tint = TextOnAccent,
                 modifier = Modifier.size(18.dp),
             )
         }
     }
 }
 
+/** Inline failure notice: an `errorContainer` surface with the retry action. */
 @Composable
-private fun ErrorBox(message: String) {
-    val shape = RoundedCornerShape(16.dp)
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(DangerSurface, shape)
-            .border(1.dp, DangerBorder, shape)
-            .padding(Dimens.Spacing12),
+private fun ErrorBox(message: String, onRetry: (() -> Unit)? = null) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
     ) {
-        Text(
-            text = message,
-            modifier = Modifier.fillMaxWidth(),
-            fontSize = 13.sp,
-            color = Danger,
-            textAlign = TextAlign.Center,
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(Dimens.Spacing12),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = message,
+                modifier = Modifier.fillMaxWidth(),
+                style = DialogBodyStyle,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                textAlign = TextAlign.Center,
+            )
+            if (onRetry != null) {
+                Spacer(Modifier.height(Dimens.Spacing8))
+                AppSmallButton(label = "Tentar novamente", onClick = onRetry)
+            }
+        }
     }
 }
 
@@ -334,8 +345,8 @@ private fun EmptyHint(message: String) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = Dimens.Spacing24),
-        fontSize = 13.sp,
-        color = TextMuted,
+        style = DialogBodyStyle,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center,
     )
 }

@@ -23,7 +23,7 @@ import org.koin.compose.koinInject
  *
  * It installs the theme and the image loader, then hands the screen over to one of two layers:
  * * the **login gate**, which is the door of the app while there is no session;
- * * [AppShell], which owns the navigation graph and the floating bottom bar.
+ * * [AppShell], which hosts the tabs and the group screen (reachable from Settings).
  *
  * The gate is skipped entirely when `.env` has no Supabase credentials: a clean clone or a CI build
  * cannot sign in, and trapping the app on a login screen that cannot possibly succeed would be worse
@@ -51,8 +51,11 @@ fun App() {
  * Decides between the login screen and the app.
  *
  * `SignedOut` / `SigningIn` / `Error` mean "no session", so [LoginScreen] is the whole app;
- * `SignedIn` renders [AppShell]. Nothing else has to navigate: signing out from anywhere drops the
- * state back to `SignedOut`, and this gate swaps the shell for the login screen on its own.
+ * `SignedIn` hands over to [AppShell]. Nothing else has to navigate: signing out from anywhere
+ * drops the state back to `SignedOut`, and this gate swaps the shell for the login screen on its own.
+ *
+ * The group onboarding is not a gate anymore: a signed-in member lands on [AppShell] and reaches the
+ * "roda" from Settings. The shared group state lives in the application-scoped `GroupStore`.
  */
 @Composable
 private fun SessionGate() {

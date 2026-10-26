@@ -257,7 +257,7 @@ class MovieMathTest {
     fun approvedLabelDescribesTheGroupVerdict() {
         assertEquals("Aguardando as notas da roda", approvedLabel(average = null, totalRatings = 0))
         assertEquals("Aguardando as notas da roda", approvedLabel(average = 8.0, totalRatings = 0))
-        assertEquals("Selo 'Aprovado pela Maria!'", approvedLabel(average = 7.0, totalRatings = 2))
+        assertEquals("Selo 'Aprovado pela roda!'", approvedLabel(average = 7.0, totalRatings = 2))
         assertEquals("Veredito morno", approvedLabel(average = 5.0, totalRatings = 2))
         assertEquals("Selo 'Quem quer ver de novo?'", approvedLabel(average = 4.9, totalRatings = 2))
     }
@@ -291,7 +291,7 @@ class MovieMathTest {
 
     @Test
     fun homeStatsAggregatesTheMockWatchList() {
-        val stats = homeStats(MockData.items())
+        val stats = homeStats(MockData.items(), "Maria", "Luiz")
 
         assertEquals(9, stats.totalList)
         assertEquals(5, stats.watched)
@@ -308,19 +308,19 @@ class MovieMathTest {
 
     @Test
     fun homeStatsComputesTheCriticsDuel() {
-        val stats = homeStats(MockData.items())
+        val stats = homeStats(MockData.items(), "Maria", "Luiz")
 
-        assertEquals(8.8, stats.mariaAvg)
-        assertEquals(5, stats.mariaRatingsCount)
-        assertEquals(7.4, stats.luizAvg)
-        assertEquals(5, stats.luizRatingsCount)
+        assertEquals(8.8, stats.member1Avg)
+        assertEquals(5, stats.member1RatingsCount)
+        assertEquals(7.4, stats.member2Avg)
+        assertEquals(5, stats.member2RatingsCount)
         assertEquals(10, stats.evaluationsCount)
         assertEquals(1.4, stats.diffPoints)
     }
 
     @Test
     fun homeStatsRanksTheTopThreeByAverage() {
-        val consensus = homeStats(MockData.items()).consensus
+        val consensus = homeStats(MockData.items(), "Maria", "Luiz").consensus
 
         assertEquals(3, consensus.size)
         assertEquals(listOf("Ruptura", "Duna: Parte Dois", "Oppenheimer"), consensus.map { it.title })
@@ -336,7 +336,7 @@ class MovieMathTest {
 
     @Test
     fun homeStatsCountsGenresFromThePrimaryGenre() {
-        val genres = homeStats(MockData.items()).genres
+        val genres = homeStats(MockData.items(), "Maria", "Luiz").genres
 
         assertEquals(listOf("Ficção Científica", "Drama", "Terror", "Fantasia", "Comédia", "Animação"), genres.map { it.name })
         assertEquals(listOf(2, 2, 2, 1, 1, 1), genres.map { it.count })
@@ -348,13 +348,13 @@ class MovieMathTest {
 
     @Test
     fun homeStatsIsEmptySafe() {
-        val stats = homeStats(emptyList())
+        val stats = homeStats(emptyList(), "Maria", "Luiz")
         assertEquals(0, stats.totalList)
         assertEquals(0, stats.watchedPercentage)
         assertEquals(0, stats.harmonyPercentage)
         assertEquals(0.0, stats.agreementAvg)
-        assertNull(stats.mariaAvg)
-        assertNull(stats.luizAvg)
+        assertNull(stats.member1Avg)
+        assertNull(stats.member2Avg)
         assertNull(stats.diffPoints)
         assertTrue(stats.consensus.isEmpty())
         assertTrue(stats.genres.isEmpty())

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -23,7 +24,7 @@ import app.moviematch.presentation.common.dataOrNull
 import app.moviematch.presentation.common.errorOrNull
 import app.moviematch.presentation.common.isLoading
 import app.moviematch.presentation.components.HeaderIconButton
-import app.moviematch.presentation.components.ScreenHeader
+import app.moviematch.presentation.components.ScreenTopBar
 import app.moviematch.presentation.components.StateError
 import app.moviematch.presentation.components.icons.IconLogout
 import app.moviematch.presentation.components.icons.iconSize
@@ -36,7 +37,6 @@ import app.moviematch.presentation.home.components.PopcornThermometerCard
 import app.moviematch.presentation.home.components.RandomMovieCard
 import app.moviematch.presentation.navigation.rememberBottomBarBottomPadding
 import app.moviematch.presentation.theme.Dimens
-import app.moviematch.presentation.theme.TextSecondary
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -58,6 +58,7 @@ fun HomeScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val pickResult by viewModel.pickResult.collectAsStateWithLifecycle()
+    val memberNames by viewModel.memberNames.collectAsStateWithLifecycle()
     var emptyQueueNotice by remember { mutableStateOf(false) }
 
     LaunchedEffect(pickResult) {
@@ -81,8 +82,11 @@ fun HomeScreen(
     // The header carries the logout action, and only when there is a session to end.
     val headerAction: (@Composable () -> Unit)? = onLogout?.let { logout ->
         {
-            HeaderIconButton(onClick = logout) {
-                IconLogout(modifier = Modifier.iconSize(18.dp), color = TextSecondary)
+            HeaderIconButton(
+                onClick = logout,
+                contentDescription = "Sair da conta",
+            ) {
+                IconLogout(modifier = Modifier.iconSize(18.dp), color = LocalContentColor.current)
             }
         }
     }
@@ -92,7 +96,7 @@ fun HomeScreen(
             .fillMaxSize()
             .statusBarsPadding(),
     ) {
-        ScreenHeader(
+        ScreenTopBar(
             title = "Home",
             subtitle = "Acompanhe seus Filmes e Séries",
             action = headerAction,
@@ -148,16 +152,22 @@ fun HomeScreen(
                     verdictTitle = stats.harmonyTitle,
                 )
 
-                CriticsDuelCard(
-                    evaluationsCount = stats.evaluationsCount,
-                    mariaAvg = stats.mariaAvg,
-                    mariaRatingsCount = stats.mariaRatingsCount,
-                    luizAvg = stats.luizAvg,
-                    luizRatingsCount = stats.luizRatingsCount,
-                    diffPoints = stats.diffPoints,
-                )
+                // Only meaningful (and only truthful) while the member belongs to a roda: the pair
+                // names come from the group, never from seeded placeholders.
+                memberNames?.let { names ->
+                    CriticsDuelCard(
+                        evaluationsCount = stats.evaluationsCount,
+                        member1Name = names.first,
+                        member1Avg = stats.member1Avg,
+                        member1RatingsCount = stats.member1RatingsCount,
+                        member2Name = names.second,
+                        member2Avg = stats.member2Avg,
+                        member2RatingsCount = stats.member2RatingsCount,
+                        diffPoints = stats.diffPoints,
+                    )
+                }
 
-                GroupConsensusCard(topMovies = stats.consensus)
+                GroupConsensusCard(topMovies = stats.consensus, memberNames = memberNames)
 
                 FavoriteGenresCard(
                     totalMovies = stats.totalList,

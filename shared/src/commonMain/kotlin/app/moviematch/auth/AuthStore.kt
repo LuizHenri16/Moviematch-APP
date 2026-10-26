@@ -20,6 +20,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -30,7 +32,7 @@ internal const val MISSING_GOOGLE_CLIENT_ID_MESSAGE =
     "Login com Google indisponível: WEB_CLIENT_ID não configurado."
 
 /** Shown when the `.env` has no Supabase credentials at all. */
-private const val MISSING_SUPABASE_MESSAGE =
+internal const val MISSING_SUPABASE_MESSAGE =
     "Supabase não configurado: preencha SUPABASE_URL e SUPABASE_ANON_KEY no .env."
 
 private const val SIGN_IN_FAILED_MESSAGE = "Não foi possível entrar. Tente novamente."
@@ -54,18 +56,26 @@ private const val SIGN_OUT_FAILED_MESSAGE =
  *
  * @param supabaseClient `null` when `.env` has no Supabase credentials. Every entry point then
  *   moves to [AuthState.Error] with an explicit message instead of crashing.
+ * @param initialState optional seed used by tests to start already signed in without a real
+ *   Supabase session. Production (Koin) leaves it `null`, which keeps the default described above.
  */
 class AuthStore(
     private val supabaseClient: SupabaseClient?,
     private val currentProfile: CurrentProfileStore,
+    initialState: AuthState? = null,
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val _state = MutableStateFlow<AuthState>(
-        if (supabaseClient == null) AuthState.Error(MISSING_SUPABASE_MESSAGE) else AuthState.SignedOut,
+        initialState
+            ?: if (supabaseClient == null) AuthState.Error(MISSING_SUPABASE_MESSAGE) else AuthState.SignedOut,
     )
     val state: StateFlow<AuthState> = _state.asStateFlow()
+
+    /** Emits `true` once the Supabase session is fully authenticated and ready for RPC calls. */
+    private val _sessionReady = MutableStateFlow(initialState is AuthState.SignedIn)
+    val sessionReady: StateFlow<Boolean> = _sessionReady.asStateFlow()
 
     init {
         if (supabaseClient != null) {
@@ -145,14 +155,21 @@ class AuthStore(
             when (status) {
                 SessionStatus.Initializing -> Unit
 
-                is SessionStatus.Authenticated -> onAuthenticated(status.session)
+                is SessionStatus.Authenticated -> {
+                    onAuthenticated(status.session)
+                    _sessionReady.value = true
+                }
 
                 is SessionStatus.NotAuthenticated -> {
                     currentProfile.reset()
                     _state.value = AuthState.SignedOut
+                    _sessionReady.value = false
                 }
 
-                is SessionStatus.RefreshFailure -> _state.value = AuthState.Error(SESSION_EXPIRED_MESSAGE)
+                is SessionStatus.RefreshFailure -> {
+                    _state.value = AuthState.Error(SESSION_EXPIRED_MESSAGE)
+                    _sessionReady.value = false
+                }
             }
         }
     }

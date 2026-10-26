@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ splash screen (dark mode); mirrors `MovieMatchDarkColorScheme.surface`. -->
+    <style name="Theme.MovieMatch" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/moviematch_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowSplashScreenBackground">@color/moviematch_background</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/moviematch_background</item>
+    </style>
+</resources>

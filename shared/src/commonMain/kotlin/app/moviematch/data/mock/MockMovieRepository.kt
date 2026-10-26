@@ -17,7 +17,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 
 /**
- * In-memory [MovieRepository] used until the Supabase client is wired.
+ * In-memory [MovieRepository] used when the `.env` has no Supabase credentials (clean clone,
+ * CI without secrets); with a configured backend the Koin `dataModule` binds the real
+ * [app.moviematch.data.supabase.SupabaseMovieRepository] instead.
  *
  * It behaves like the real thing: mutations are persisted in a [StateFlow], so changes made from one
  * screen (rating a movie, toggling "assistido", adding a title) are visible everywhere immediately.
@@ -32,7 +34,7 @@ class MockMovieRepository(
     /** Observable list — `MovieDetailsViewModel`/`MoviesViewModel` collect it. */
     val items: StateFlow<List<ContentItem>> = itemsFlow.asStateFlow()
 
-    override suspend fun group(): Group = MockData.group
+    override suspend fun group(): Group? = MockData.group
 
     override suspend fun profiles(): List<Profile> = listOf(MockData.maria, MockData.luiz)
 

@@ -52,7 +52,7 @@ fun round1(value: Double): Double = (value * 10.0).roundToInt() / 10.0
 /** The two individual scores of a session, one per member of the group. */
 data class ProfileScores(val maria: Double? = null, val luiz: Double? = null)
 
-/** Maps each rating to its author; unknown names are ignored. */
+/** Maps each rating to its author using "Maria"/"Luiz" substring matching (legacy). */
 fun scoreByProfile(ratings: List<RatingWithProfile>?): ProfileScores {
     var maria: Double? = null
     var luiz: Double? = null
@@ -64,6 +64,25 @@ fun scoreByProfile(ratings: List<RatingWithProfile>?): ProfileScores {
         }
     }
     return ProfileScores(maria = maria, luiz = luiz)
+}
+
+/** Maps each rating to its author by exact display name matching. */
+fun scoreByProfileNames(
+    ratings: List<RatingWithProfile>?,
+    name1: String,
+    name2: String,
+): Pair<Double?, Double?> {
+    var score1: Double? = null
+    var score2: Double? = null
+    ratings.orEmpty().forEach { rating ->
+        val displayName = rating.profile?.displayName?.lowercase() ?: ""
+        when {
+            displayName == name1.lowercase() -> score1 = rating.score
+            displayName == name2.lowercase() -> score2 = rating.score
+            else -> Unit
+        }
+    }
+    return score1 to score2
 }
 
 /** Arithmetic mean of every rating, or `null` when there is none. */
@@ -137,7 +156,7 @@ fun harmonyCopy(percentage: Int, sessionsBoth: Int): HarmonyCopy = when {
 /** Verdict seal shown on the detail screen. Mirrors `approvedLabel()`. */
 fun approvedLabel(average: Double?, totalRatings: Int): String = when {
     totalRatings == 0 || average == null -> "Aguardando as notas da roda"
-    average >= 7 -> "Selo 'Aprovado pela Maria!'"
+    average >= 7 -> "Selo 'Aprovado pela roda!'"
     average >= 5 -> "Veredito morno"
     else -> "Selo 'Quem quer ver de novo?'"
 }
@@ -200,10 +219,12 @@ data class HomeStats(
     val agreementAvg: Double = 0.0,
     val harmonyTitle: String = "",
     val harmonyBadge: String = "",
-    val mariaAvg: Double? = null,
-    val mariaRatingsCount: Int = 0,
-    val luizAvg: Double? = null,
-    val luizRatingsCount: Int = 0,
+    val member1Name: String = "",
+    val member1Avg: Double? = null,
+    val member1RatingsCount: Int = 0,
+    val member2Name: String = "",
+    val member2Avg: Double? = null,
+    val member2RatingsCount: Int = 0,
     val evaluationsCount: Int = 0,
     val diffPoints: Double? = null,
     val consensus: List<ConsensusEntry> = emptyList(),
@@ -214,7 +235,11 @@ data class HomeStats(
  * Single pass over the watch list producing every number/copy the Home screen needs.
  * This is the Kotlin port of the `useMemo` block of the reference `HomeScreen`.
  */
-fun homeStats(items: List<ContentItem>): HomeStats {
+fun homeStats(
+    items: List<ContentItem>,
+    member1Name: String = "",
+    member2Name: String = "",
+): HomeStats {
     val totalList = items.size
     val watched = items.count { it.isWatched }
     val queue = totalList - watched
@@ -222,18 +247,18 @@ fun homeStats(items: List<ContentItem>): HomeStats {
 
     // --- Índice de Sintonia: how often both members land in the same verdict band. ---
     val bothRated = items.filter { item ->
-        val scores = scoreByProfile(item.ratings)
-        scores.maria != null && scores.luiz != null
+        val (score1, score2) = scoreByProfileNames(item.ratings, member1Name, member2Name)
+        score1 != null && score2 != null
     }
     val agreed = bothRated.count { item ->
-        val scores = scoreByProfile(item.ratings)
-        verdictBand(scores.maria!!) == verdictBand(scores.luiz!!)
+        val (score1, score2) = scoreByProfileNames(item.ratings, member1Name, member2Name)
+        verdictBand(score1!!) == verdictBand(score2!!)
     }
     val harmonyPercentage = if (bothRated.isNotEmpty()) percentage(agreed, bothRated.size) else 0
     val meanDiff = if (bothRated.isNotEmpty()) {
         bothRated.sumOf { item ->
-            val scores = scoreByProfile(item.ratings)
-            abs(scores.maria!! - scores.luiz!!)
+            val (score1, score2) = scoreByProfileNames(item.ratings, member1Name, member2Name)
+            abs(score1!! - score2!!)
         } / bothRated.size
     } else {
         0.0
@@ -242,30 +267,29 @@ fun homeStats(items: List<ContentItem>): HomeStats {
     val harmony = harmonyCopy(harmonyPercentage, bothRated.size)
 
     // --- Duelo de Críticos: individual averages. ---
-    var mariaSum = 0.0
-    var mariaCount = 0
-    var luizSum = 0.0
-    var luizCount = 0
+    var member1Sum = 0.0
+    var member1Count = 0
+    var member2Sum = 0.0
+    var member2Count = 0
     items.forEach { item ->
         item.ratings.forEach { rating ->
-            when (ProfileName.fromDisplayName(rating.profile?.displayName)) {
-                ProfileName.MARIA -> {
-                    mariaSum += rating.score
-                    mariaCount++
+            val displayName = rating.profile?.displayName?.lowercase() ?: ""
+            when {
+                displayName == member1Name.lowercase() -> {
+                    member1Sum += rating.score
+                    member1Count++
                 }
-
-                ProfileName.LUIZ -> {
-                    luizSum += rating.score
-                    luizCount++
+                displayName == member2Name.lowercase() -> {
+                    member2Sum += rating.score
+                    member2Count++
                 }
-
-                null -> Unit
+                else -> Unit
             }
         }
     }
-    val mariaAvg = if (mariaCount > 0) round1(mariaSum / mariaCount) else null
-    val luizAvg = if (luizCount > 0) round1(luizSum / luizCount) else null
-    val diffPoints = if (mariaAvg != null && luizAvg != null) round1(abs(mariaAvg - luizAvg)) else null
+    val member1Avg = if (member1Count > 0) round1(member1Sum / member1Count) else null
+    val member2Avg = if (member2Count > 0) round1(member2Sum / member2Count) else null
+    val diffPoints = if (member1Avg != null && member2Avg != null) round1(abs(member1Avg - member2Avg)) else null
 
     // --- Consenso do Grupo: the three best rated titles. ---
     val consensus = items
@@ -324,11 +348,13 @@ fun homeStats(items: List<ContentItem>): HomeStats {
         agreementAvg = agreementAvg,
         harmonyTitle = harmony.title,
         harmonyBadge = harmony.badge,
-        mariaAvg = mariaAvg,
-        mariaRatingsCount = mariaCount,
-        luizAvg = luizAvg,
-        luizRatingsCount = luizCount,
-        evaluationsCount = mariaCount + luizCount,
+        member1Name = member1Name,
+        member1Avg = member1Avg,
+        member1RatingsCount = member1Count,
+        member2Name = member2Name,
+        member2Avg = member2Avg,
+        member2RatingsCount = member2Count,
+        evaluationsCount = member1Count + member2Count,
         diffPoints = diffPoints,
         consensus = consensus,
         genres = genres,
