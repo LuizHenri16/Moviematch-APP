@@ -1,11 +1,19 @@
 # Arquitetura — MovieMatchApp
 
-> **Documento canônico da arquitetura atual.**  
-> Última revisão: **19/10/2026**  
-> Método: análise estática do código, dos builds e das migrações SQL do repositório.  
+> **Documento canônico da arquitetura atual.** Junto com o [`README.md`](README.md) (visão pública: instalação, configuração e uso), forma toda a documentação do repositório.
+>
+> Última revisão: **01/11/2026** (revisão inicial em 19/10/2026)
+>
+> Método: análise estática do código, dos builds e das migrações SQL do repositório.
+>
 > Build, testes e execução em device **não** foram rodados durante esta revisão.
+>
+> **Mudanças desta revisão:**
+> - Consolidação da documentação: `DESIGN_GROUP_FLOW.md`, `DESIGN_GROUP_FLOW_V2.md`, `QA_REPORT.md` e `DESIGN_SYSTEM.md` foram **removidos** e seu conteúdo útil absorvido aqui (tokens de UI em §12.3; histórico de defeitos e pendências em §10.4/§15). Ver [§18](#18-documentos-e-regra-de-manutenção).
+> - `README.md` reescrito como visão pública do projeto (as afirmações antigas de "apenas configuração inicial" e "backend fora do repo" foram corrigidas).
+> - Verificação pontual no código: o app **não** consome Realtime (a publicação existe só no SQL), `group(): Group?` é nullable (P0-A resolvido) e o P0-B (identidade por nome) permanece aberto.
 
-Este documento descreve o que o repositório implementa hoje. Ele não é um changelog nem um plano de produto. Decisões já superadas estão isoladas na seção [Documentos históricos e conteúdo superseded](#18-documentos-históricos-e-conteúdo-superseded).
+Este documento descreve o que o repositório implementa hoje. Ele não é um changelog nem um plano de produto. Decisões já superadas estão isoladas na seção [Documentos e regra de manutenção](#18-documentos-e-regra-de-manutenção).
 
 ---
 
@@ -68,12 +76,34 @@ Versões declaradas em `gradle/libs.versions.toml`, `gradle/wrapper/gradle-wrapp
 
 Não há target desktop ou web.
 
+### 2.1 Por que `compileSdk = 37`
+
+As libs AndroidX declaram um `minCompileSdk` nos metadados do AAR (`aar-metadata.properties`). O Gradle falha o build quando esse valor é maior que `android-compileSdk`, então o maior requisito do grafo manda. Verificado baixando os `.aar` e lendo a propriedade:
+
+| Artefato (variante Android) | Versão | `minCompileSdk` |
+| :--- | :--- | :--- |
+| `androidx.lifecycle:lifecycle-runtime-compose` | 2.11.0 | **37** ← define o piso |
+| `androidx.activity:activity` / `activity-compose` | 1.11.0 | 36 |
+| `io.coil-kt.coil3:coil-compose` | 3.5.0 | 36 |
+| `androidx.core:core` | 1.18.0 | 36 |
+| `androidx.compose.ui:ui` | 1.11.2 | 35 |
+| `androidx.compose.material3:material3` | 1.5.0-alpha17 | 35 |
+| `androidx.navigation:navigation-compose` | 2.9.7 | 35 |
+| `androidx.compose.runtime:runtime` | 1.11.2 | 34 |
+| `androidx.compose.material:material-icons-core` | 1.7.3 | 34 |
+| `org.jetbrains.androidx.lifecycle:*` (KMP) | 2.11.0 | 34 |
+| `koin`, `supabase-kt`, `multiplatform-settings` | 4.2.2 / 3.8.0 / 1.3.0 | 1 |
+
+Como o piso é 37, `android-compileSdk`/`android-targetSdk` ficam em **37** e as libs que haviam sido rebaixadas por causa do compileSdk 35 subiram para as versões estáveis mais novas: `androidx.activity` **1.11.0**, `androidx.lifecycle` **2.11.0** (artefatos multiplataforma `org.jetbrains.androidx.lifecycle`, que por sua vez puxam `androidx.lifecycle` 2.11.0) e `coil3` **3.5.0**. O `minSdk` continua 24.
+
+Essa tabela é a mesma documentada no cabeçalho de `gradle/libs.versions.toml`, que é a fonte das versões.
+
 ---
 
 ## 3. Módulos e diretórios
 
 ```text
-MoviematchApp/
+Moviematch-APP/
 ├── androidApp/                     # host Android (Activity + Application + recursos)
 ├── iosApp/                         # host SwiftUI + projeto Xcode
 ├── shared/                         # todo o código compartilhado
@@ -109,6 +139,7 @@ MoviematchApp/
 │   ├── 0003_remove_member.sql       # remove_member
 │   └── 0004_fix_group_lifecycle.sql # lifecycle de grupo/convite + índices parciais
 ├── .env.example                    # template versionado
+├── README.md                       # visão pública: setup, uso e roadmap
 └── ARCHITECTURE.md                 # este documento
 ```
 
@@ -696,7 +727,7 @@ Com nomes reais de usuários Google, o fallback pode gravar a nota no perfil err
 - `scoreByProfileNames` (nome exato) é usado em `homeStats` para sintonia/duelo;
 - `scoreByProfile` (substring Maria/Luiz) é usado em `toMovie`, `contentToMovie` e no consenso da Home.
 
-Esse é o P0-B registrado no `DESIGN_GROUP_FLOW_V2.md`; a correção recomendada é migrar `saveRating` para `profileId` e derivar o autor de `GroupOverview.me`/`partner`.
+Esse é o P0-B listado em [§15](#15-dívidas-riscos-e-prioridades); a correção recomendada é migrar `saveRating` para `profileId` e derivar o autor de `GroupOverview.me`/`partner`. O defeito foi originalmente reportado no relatório de QA de 18/10/2026 (hoje consolidado neste documento).
 
 ### 10.5 Data hardcoded em `MoviesViewModel`
 
@@ -766,20 +797,75 @@ Sem Supabase:
 - `NoticeBox` para feedback de grupo.
 - Empty states explícitos (“Nenhum convite por aqui ainda.”, “Nenhuma sessão avaliada ainda…”).
 
-### 12.3 Design system
+### 12.3 Design system (Material 3)
 
-- **Material Design 3** integral: papéis de cor, escala tipográfica e escala de forma oficiais.
-- Tema **claro e escuro** (`isSystemInDarkTheme()`), com **cor dinâmica (Material You)** no Android 12+;
-  iOS e Android antigo usam os esquemas estáticos gerados da seed `#7DD3FC`.
-- Tokens em `presentation/theme/`: `Color.kt` (esquemas), `Type.kt` (escala MD3), `Theme.kt` (shapes e
-  `dynamicColorScheme`) e `Dimens.kt` (espaçamento, formas e tamanhos).
-- Componentes base em `presentation/components/`: `BentoCard`/`BentoTile` (Card/Surface),
-  `ScreenTopBar` (TopAppBar), `BottomBar` (NavigationBar), `ConfirmDialog` (AlertDialog),
-  `SearchInput`/`AvatarUrlField` (OutlinedTextField), `AppButton`/`AppSmallButton` (Button/OutlinedButton/
-  FilledTonalButton) e `ProgressBar` (LinearProgressIndicator).
-- A referência completa (papéis, mapa de migração e acessibilidade) está em [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md).
-- Coil3 com `KtorNetworkFetcherFactory` instalado explicitamente para funcionar também no iOS.
-- Strings de UI estão em português, mas ainda inline no código; não há catálogo de recursos/i18n.
+Referência para telas novas e revisão das existentes (consolidada do antigo `DESIGN_SYSTEM.md`).
+
+**Princípios:**
+
+1. **Material 3 puro.** Componentes, papéis de cor, escala tipográfica e escala de forma oficiais — sem glass, gradientes decorativos, bordas de "sheen" nem sombras difusas em cards.
+2. **Tema claro e escuro.** `MovieMatchTheme` segue `isSystemInDarkTheme()`.
+3. **Cor dinâmica.** No Android 12+ o esquema é derivado do wallpaper (Material You); fora disso (iOS, Android < 12) valem os esquemas estáticos gerados da seed `#7DD3FC` com `@material/material-color-utilities` (`SchemeTonalSpot`), contendo todos os papéis MD3.
+4. **Semântica antes de estética.** Todo texto usa o papel `on*` da superfície em que está.
+
+Tokens em `presentation/theme/`: `Color.kt` (esquemas), `Type.kt` (escala MD3 + aliases), `Theme.kt` (shapes e `dynamicColorScheme`) e `Dimens.kt` (espaçamento, formas e tamanhos).
+
+**Cor — escolha do papel:**
+
+| Necessidade | Papel |
+| :--- | :--- |
+| Ação principal / destaque | `primary` / `onPrimary` |
+| Ação secundária | `secondary` / `secondaryContainer` / `onSecondaryContainer` |
+| Família de dados alternativa | `tertiary` / `tertiaryContainer` |
+| Canvas | `background` / `onBackground` |
+| Card de conteúdo | `surfaceContainerLow` |
+| Card sobre card / tile | `surfaceContainerHighest` |
+| Chrome (navigation bar) | `surfaceContainer` |
+| Texto principal | `onSurface` |
+| Texto de apoio | `onSurfaceVariant` |
+| Divisor / borda neutra | `outlineVariant` |
+| Borda enfatizada / campo focado | `outline` |
+| Erro / destrutivo | `error` / `errorContainer` / `onErrorContainer` |
+| Overlay modal | `scrim` |
+
+**Tipografia — aliases semânticos** (todos `@Composable`, em `Type.kt`):
+
+| Alias | Papel MD3 |
+| :--- | :--- |
+| `ScreenTitleStyle` | `headlineSmall` |
+| `ScreenSubtitleStyle` | `bodyMedium` |
+| `HeroTitleStyle` | `headlineLarge` |
+| `CardTitleStyle` | `titleLarge` |
+| `CardMetaStyle` | `bodySmall` |
+| `StatNumberStyle` / `NumericHeroStyle` | `displaySmall` |
+| `DialogTitleStyle` | `headlineSmall` |
+| `DialogBodyStyle` | `bodyMedium` |
+| `MicroLabelStyle` | `labelSmall` |
+
+**Forma e medida:** `MaterialTheme.shapes` = 4 / 8 / 12 / 16 / 28 dp. Botões usam a forma *full* (`Dimens.RadiusPill`), chips `small` e a barra de busca `extraLarge` (pill de 28dp); os demais campos usam `extraSmall` (4dp), como no MD3 — a pill é reservada à busca. Grid de 4dp (4/8/12/16/24); botões 40dp, chips 32dp, campos 56dp, icon buttons 40dp (alvo 48dp), navigation bar 80dp, ícones 16/20/24dp (24dp na navigation bar).
+
+**Componentes base** (`presentation/components/`):
+
+| Componente | Base MD3 |
+| :--- | :--- |
+| `BentoCard` | `Card` (`surfaceContainerLow`, shape large, elevação 0) |
+| `BentoTile` | `Surface` (`surfaceContainerHighest`, shape medium) |
+| `AppButton` | `Button` / `OutlinedButton` (papel `error` para destrutivo) |
+| `AppSmallButton` | `FilledTonalButton` |
+| `Chip` | `Surface` com shape small e papéis tonais (selected = `secondaryContainer`) |
+| `Pill` | `Surface` + `labelMedium` |
+| `IconBadge` | `Surface` (`secondaryContainer`) |
+| `ScreenTopBar` | `TopAppBar` |
+| `BottomBar` | `NavigationBar` + `NavigationBarItem` |
+| `SearchInput` / `AvatarUrlField` | `OutlinedTextField` (pill de busca / shape `extraSmall`) |
+| `ProgressBar` | `LinearProgressIndicator` |
+| `ConfirmDialog` | `AlertDialog` |
+| `StateMessage` | `Surface` semântica + `FilledTonalButton` |
+| `Skeleton` | bloco tonal com pulse (`surfaceContainerHighest`) |
+
+**Acessibilidade:** todo alvo interativo tem no mínimo 48dp; ícones decorativos usam `contentDescription = null` e ações têm descrição obrigatória; contraste sempre com um papel `on*` sobre o seu container; texto dinâmico nunca é forçado a uppercase (exceto micro-rótulos estáticos).
+
+Demais pontos: Coil3 com `KtorNetworkFetcherFactory` instalado explicitamente para funcionar também no iOS; strings de UI estão em português, mas ainda inline no código — não há catálogo de recursos/i18n.
 
 ---
 
@@ -802,13 +888,25 @@ Cobertura por área:
 | TMDb | `TmdbClientTest`, `TmdbRowsTest` |
 | Plataforma | `PlatformTest` |
 
-### 13.2 Comando documentado
+### 13.2 Comandos documentados
 
 ```bash
-./gradlew :shared:testAndroidHostTest
+./gradlew :shared:testAndroidHostTest    # commonTest no host JVM (Linux/CI)
+./gradlew :shared:allTests               # todos os alvos (iOS exige macOS)
+./gradlew :androidApp:assembleDebug      # build de debug
+./gradlew :androidApp:lintDebug          # lint
 ```
 
-O último registro documental no `DESIGN_GROUP_FLOW_V2.md` (19/10/2026) informa `tests=113 failures=0 errors=0 skipped=0`, número anterior aos testes adicionados depois. Há também um relatório local em `shared/build/test-results/testAndroidHostTest/` (10 suítes, `tests=118 failures=0 errors=0 skipped=0`, gerado em 19/10/2026 20:57 UTC). **Esta revisão não executou o comando**: a contagem de 118 é estática e o relatório é artefato de build pré-existente, não versionado.
+Validação visual de tema (exige emulador/dispositivo conectado):
+
+```bash
+adb shell cmd uimode night no    # tema claro
+adb shell cmd uimode night yes   # tema escuro
+```
+
+No Android 12+, a cor dinâmica (Material You) pode ser conferida trocando o wallpaper. Fora do Android 12+ (e no iOS) valem os esquemas estáticos de `Color.kt` (§12.3).
+
+Há um relatório local em `shared/build/test-results/testAndroidHostTest/` (10 suítes, `tests=118 failures=0 errors=0 skipped=0`, gerado em 19/10/2026 20:57 UTC); o registro anterior (`tests=113`) é da data da implementação do fluxo de grupo. **Esta revisão não executou o comando**: a contagem de 118 é estática e o relatório é artefato de build pré-existente, não versionado.
 
 ### 13.3 Lacunas de teste
 
@@ -850,7 +948,6 @@ Prioridade sugerida: **P0** bloqueia correção de dados/segurança; **P1** afet
 | **P1** | Convite enviado não pode ser cancelado | enum `cancelled` existe, mas não há RPC/UI de outgoing invites | criar `cancel_invite` + lista “Convites enviados” |
 | **P1** | Login Google iOS ausente | `GoogleSignIn.ios.kt` é stub explícito | integrar GoogleSignIn-iOS + URL scheme + binding |
 | **P1** | Divergência criador por `slot` vs `created_by` | SQL `remove_member` valida slot 1; UI valida `created_by` | alinhar contrato de identidade do criador |
-| **P1** | Documentação antiga contraditória | `README` diz “apenas configuração inicial”, grupos pendentes e backend fora do repo; `V2` cita `GroupGate` removido; `QA_REPORT` cita 97 testes | manter este documento como fonte; atualizar docs históricos só quando necessário |
 | **P1** | `0001` isolado não corrige o ciclo de vida | `0001` mantém únicos não parciais e dissolução incompleta; `0004` é obrigatória | garantir aplicação da `0004` em todo ambiente; consolidar o schema em instalações novas |
 | **P2** | Dependências `realtime`/`storage` declaradas sem plugin | `build.gradle.kts` inclui ambas; `createAppSupabaseClient` instala só Auth/Postgrest | remover dependências não usadas ou instalar/consumir quando houver feature |
 | **P2** | Vazamentos de camada | `GroupStore`→exceção de data; `AuthStore`→`profileById`; `ProfileRepository`→`CurrentProfileStore` | extrair contratos/erros para `domain` e inverter dependências |
@@ -868,7 +965,7 @@ Prioridade sugerida: **P0** bloqueia correção de dados/segurança; **P1** afet
 
 Os pontos abaixo não podem ser confirmados apenas por leitura estática:
 
-1. **Build e testes:** não foram executados. A contagem de 118 testes é estática; há um relatório local anterior (`shared/build/test-results/testAndroidHostTest/`) com `118/0/0/0`, e o resultado `113/0` é registro histórico do `DESIGN_GROUP_FLOW_V2.md`.
+1. **Build e testes:** não foram executados. A contagem de 118 testes é estática; há um relatório local anterior (`shared/build/test-results/testAndroidHostTest/`) com `118/0/0/0`, e o resultado `113/0` é registro histórico de 19/10/2026 (documento de plano de implementação, agora consolidado neste).
 2. **Estado do projeto Supabase:** não foi possível confirmar se as migrações `0001`–`0004` estão aplicadas no servidor, nem se o schema remoto é idêntico ao versionado.
 3. **RLS em runtime:** policies e grants foram lidos no SQL, mas não exercitados contra um Postgres real.
 4. **Login Google Android:** depende de `WEB_CLIENT_ID`, client Android com SHA-1 e Play Services; não validado em device.
@@ -935,24 +1032,27 @@ Os pontos abaixo não podem ser confirmados apenas por leitura estática:
 
 ---
 
-## 18. Documentos históricos e conteúdo superseded
+## 18. Documentos e regra de manutenção
 
-Este documento substitui os documentos abaixo como **fonte única da arquitetura atual**. Eles permanecem no repositório como histórico e não foram reescritos.
+O repositório tem **dois documentos**: este `ARCHITECTURE.md` (fonte única da arquitetura) e o [`README.md`](README.md) (visão pública: instalação, configuração, uso e roadmap).
 
-| Documento | Status | O que está superseded |
-| :--- | :--- | :--- |
-| `DESIGN_GROUP_FLOW.md` | histórico de design | referências a `GroupGate`, fluxo antigo e decisões anteriores à implementação |
-| `DESIGN_GROUP_FLOW_V2.md` | histórico de implementação e análise de defeitos | §1 descreve `GroupGate`/`App.kt:83-90`, que não existem mais; registra 113 testes na data; o restante é útil como registro do racional |
-| `QA_REPORT.md` | histórico de QA | relata 97 testes e o bug de fixture já corrigido; o fluxo com `GroupGate` não corresponde ao código atual |
-| `README.md` | parcialmente desatualizado | afirma “apenas configuração inicial”, “backend não faz parte do repo” e grupos pendentes; há `supabase/`, app funcional e fluxo de grupo implementado |
-| `supabase/0001_init.sql` (cabeçalho) | parcialmente desatualizado | diz ser cópia verbatim sem divergências, mas já contém `join_group_by_code`, também definida pela `0002` |
+Os documentos abaixo foram **removidos em 01/11/2026** e consolidados. O conteúdo útil foi absorvido nas seções indicadas; o restante estava superseded em relação ao código atual:
+
+| Documento removido | Onde vive o conteúdo útil |
+| :--- | :--- |
+| `DESIGN_GROUP_FLOW.md` | fluxo de navegação e gates anteriores → §5 e §6 |
+| `DESIGN_GROUP_FLOW_V2.md` | plano de implementação concluído; racional do `GroupStore` → §7.1; pendências remanescentes (P0-B, cancelar convite) → §10.4 e §15 |
+| `QA_REPORT.md` | relatório de QA de 18/10/2026: P0-A (`group()` nullable) e fixture de teste já corrigidos; P0-B permanece → §10.4 e §15; itens validados como corretos → §9 e §12 |
+| `DESIGN_SYSTEM.md` | princípios, tokens de cor/tipografia/forma, componentes e acessibilidade → §12.3; comandos de validação de tema → §13.2 |
+| `README.md` (versão anterior) | substituído em 01/11/2026 pela visão pública atual; as afirmações desatualizadas ("apenas configuração inicial", "backend fora do repo", grupos pendentes) foram corrigidas — débito P1 de documentação encerrado |
+| `supabase/0001_init.sql` (cabeçalho) | parcialmente desatualizado: diz ser cópia verbatim sem divergências, mas já contém `join_group_by_code`, também definida pela `0002` (ver §9.5) |
 
 ### 18.1 Regra de manutenção
 
-- **Fonte da verdade:** este `ARCHITECTURE.md` para arquitetura, fluxos, contratos e dívidas atuais.
+- **Fonte da verdade:** este `ARCHITECTURE.md` para arquitetura, fluxos, contratos e dívidas atuais; o `README.md` para instalação, configuração e uso.
 - **Código:** prevalece sobre qualquer documento quando houver divergência.
-- **Documentos históricos:** não devem ser usados para decisões de implementação sem confronto com o código.
-- **Atualização:** mudanças em rotas, RPCs, tabelas, stores, login ou permissões devem atualizar este documento no mesmo PR.
+- **Atualização:** mudanças em rotas, RPCs, tabelas, stores, login ou permissões devem atualizar este documento no mesmo PR; mudanças em setup, variáveis de ambiente ou comandos devem atualizar o `README.md`.
+- **Novos documentos:** evitar criar novos `.md` na raiz — consolidar aqui (ou no `README.md`, se for conteúdo de uso).
 
 ---
 
