@@ -1,280 +1,196 @@
-# MovieMatch — Kotlin Multiplatform + Compose Multiplatform
+# 🎬 MovieMatch
 
-> **Arquitetura atual:** consulte [`ARCHITECTURE.md`](ARCHITECTURE.md) como fonte única.
+App **Android + iOS** que organiza a "roda" de um casal: duas pessoas criam um grupo, buscam filmes e séries no TMDb, montam uma lista compartilhada, marcam o que já assistiram e dão notas de 0 a 10 — com média e veredito do par.
 
-App Android + iOS compartilhando UI e regras de negócio em Kotlin (Compose Multiplatform).
-Este repositório contém **apenas a configuração inicial** (esqueleto que compila e roda) —
-as funcionalidades de negócio (login com Google/Supabase, grupos de 2 pessoas, sessões e
-avaliações) entram nas próximas etapas.
-
-> O contrato de dados planejado está documentado em `docs/native-app/` do repositório do app
-> pessoal (`ER-DIAGRAM.md` e `supabase/0001_init.sql`). O backend **não** faz parte deste repo.
+UI e regras de negócio são escritas **uma única vez em Kotlin** (Kotlin Multiplatform + Compose Multiplatform) e rodam nos dois sistemas. O backend é **Supabase** (Auth + Postgres com RLS e RPCs) e o catálogo de títulos vem do **TMDb**.
 
 ---
 
-## Estrutura
+## ✨ Funcionalidades
 
-```
-MoviematchApp/
-├── settings.gradle.kts            # inclui :shared e :androidApp
-├── build.gradle.kts               # plugins declarados (apply false)
-├── gradle.properties
-├── gradle/
-│   ├── libs.versions.toml         # version catalog — fonte única de versões
-│   └── wrapper/                   # Gradle wrapper 9.6.1
-├── androidApp/                    # app Android (Activity + Application)
-│   ├── proguard-rules.pro         # regras (ligadas já, minify ainda desligado)
-│   └── src/main/
-│       ├── AndroidManifest.xml
-│       ├── kotlin/app/moviematch/{MainActivity,MovieMatchApplication}.kt
-│       └── res/                   # tema, cores, string e ícones
-├── shared/                        # módulo KMP compartilhado
-│   └── src/
-│       ├── commonMain/kotlin/app/moviematch/
-│       │   ├── App.kt             # raiz da UI Compose
-│       │   ├── Platform.kt        # expect platformName()
-│       │   ├── auth/              # AuthStore + expect GoogleSignInProvider
-│       │   ├── data/supabase/     # cliente supabase-kt (Auth + Postgrest)
-│       │   ├── di/Koin.kt         # inicialização do Koin (módulos + Supabase)
-│       │   └── presentation/
-│       │       ├── common/AppStores.kt   # profile atual / seleção de conteúdo
-│       │       ├── home/HomeScreen.kt
-│       │       ├── settings/             # tela Ajustes + GoogleAccountCard
-│       │       └── theme/{Color,Dimens,Theme}.kt   # tokens de design
-│       ├── androidMain/kotlin/app/moviematch/   # Platform.android, GoogleSignIn.android, di/Koin.android
-│       ├── iosMain/kotlin/app/moviematch/        # Platform.ios, MainViewController, GoogleSignIn.ios
-│       └── commonTest/kotlin/app/moviematch/     # PlatformTest, domain/MovieMathTest
-└── iosApp/                        # shell SwiftUI + .xcodeproj
-    ├── Configuration/Config.xcconfig
-    └── iosApp/{iOSApp.swift,ContentView.swift,Info.plist,Assets.xcassets}
-```
-
-Alvos: **Android** (`minSdk 24`, `compileSdk`/`targetSdk` 37) e **iOS** (`iosArm64` +
-`iosSimulatorArm64`, framework estático `Shared`). Não há target desktop/web.
-
----
-
-## Como rodar
-
-### Pré-requisitos
-
-| Ferramenta | Versão |
+| Área | O que está implementado |
 | :--- | :--- |
-| JDK | **17** (obrigatório) |
-| Android Studio | versão que suporte AGP **9.1.1** (Panda 3 / 2025.3.3+) |
-| Android SDK | Platform **37** + Build-Tools **36.0.0** (mínimo exigido pelo AGP 9) |
-| Xcode | 15+ (somente para iOS, requer macOS) |
+| 🔐 Login | "Entrar com Google" via Supabase Auth (Credential Manager no Android); sessão persistida; logout |
+| 👥 Roda (grupo) | criar grupo, entrar por código, convidar por perfil ou `@handle`, aceitar/recusar convite, sair, remover parceiro e excluir/dissolver — ações destrutivas sempre com confirmação |
+| 🎥 Catálogo | busca no TMDb (pt-BR) e adição à lista do grupo; filmes e séries |
+| 📋 Lista | status `PENDING`/`WATCHED`, comentário e exclusão de título da lista |
+| ⭐ Notas | nota individual de 0 a 10 por pessoa, média do par, veredito e "duelo de críticos" na Home |
+| 🎨 UI | Material Design 3, tema claro/escuro e cor dinâmica (Material You no Android 12+) |
+| 📴 Offline | sem `.env`, o app abre com dados de demonstração em memória (modo demo) |
 
-### Android
+---
 
-1. Abra a pasta `MoviematchApp/` no Android Studio (`File > Open` → selecione a pasta raiz).
-2. Confirme **JDK 17** em `Settings > Build, Execution, Deployment > Build Tools > Gradle >
-   Gradle JDK` (ou `File > Settings > Build Tools > Gradle`).
-3. Aguarde o **Gradle Sync** (baixa Gradle 9.6.1 + dependências).
-4. Selecione a configuração de execução **androidApp** e clique em ▶️ Run
-   (ou `./gradlew :androidApp:installDebug` com um emulador/dispositivo conectado).
+## 🛠 Tecnologias
 
-### iOS
+| Camada | Tecnologia | Versão |
+| :--- | :--- | :--- |
+| Linguagem | Kotlin (Multiplatform) | 2.4.10 |
+| UI | Compose Multiplatform + Material 3 | 1.11.1 / 1.11.0-alpha07 |
+| Build | Gradle / Android Gradle Plugin | 9.6.1 / 9.1.1 |
+| HTTP | Ktor Client | 3.5.1 |
+| Backend | supabase-kt (Auth + Postgrest) | 3.8.0 |
+| Injeção de dependência | Koin | 4.2.2 |
+| Imagens | Coil3 | 3.5.0 |
+| Android | `minSdk` 24 · `compileSdk`/`targetSdk` 37 | — |
+| iOS | `iosArm64` + `iosSimulatorArm64` (framework estático `Shared`) | — |
 
-1. Abra `iosApp/iosApp.xcodeproj` no **Xcode** (em um Mac).
-2. Em `Signing & Capabilities`, selecione o seu **Team** (ou preencha `TEAM_ID` em
-   `iosApp/Configuration/Config.xcconfig`). O bundle id já é **`app.moviematch`**.
-3. Rode o app. O build do Xcode chama a task Gradle que compila o framework `Shared`
-   automaticamente (`embedAndSignAppleFrameworkForXcode`).
+Todas as versões são centralizadas em [`gradle/libs.versions.toml`](gradle/libs.versions.toml). A tabela completa e o racional do `compileSdk 37` estão em [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
-### Linha de comando (Android)
+---
+
+## 📁 Estrutura do projeto
+
+```text
+Moviematch-APP/
+├── androidApp/          # host Android (Activity + Application + recursos)
+├── iosApp/              # host SwiftUI + projeto Xcode
+├── shared/              # todo o código compartilhado (UI + domínio + dados)
+│   └── src/
+│       ├── commonMain/  # App.kt, auth/, domain/, data/ (supabase/ e mock/), presentation/, di/
+│       ├── androidMain/ # actuals Android (Google Sign-In, Settings, engine HTTP, Koin)
+│       ├── iosMain/     # actuals iOS + MainViewController
+│       └── commonTest/  # 118 testes (rodam no host JVM, sem macOS)
+├── supabase/            # migrações SQL versionadas (schema, RLS, RPCs) — 0001…0004
+├── gradle/
+│   └── libs.versions.toml   # fonte única de versões
+├── .env.example             # template de configuração (sem segredos)
+├── README.md                # este documento
+└── ARCHITECTURE.md          # documento canônico da arquitetura
+```
+
+Detalhamento pacote a pacote em [`ARCHITECTURE.md` (§3)](ARCHITECTURE.md).
+
+---
+
+## ✅ Pré-requisitos
+
+| Ferramenta | Versão | Observação |
+| :--- | :--- | :--- |
+| JDK | **17** | obrigatório |
+| Android Studio | com suporte a AGP 9.1.1 (2025.3.3+) | para Android |
+| Android SDK | Platform **37** + Build-Tools 36.0.0 | mínimo exigido pelo AGP 9 |
+| Xcode | 15+ | apenas para iOS (requer macOS) |
+| Projeto Supabase | gratuito basta | backend (Auth + Postgres) |
+| Chave de API TMDb | v3 | busca de títulos |
+
+---
+
+## ⚙️ Configuração
+
+### 1. Clone e variáveis de ambiente
 
 ```bash
-./gradlew :androidApp:assembleDebug       # gera o APK de debug
-./gradlew :shared:testAndroidHostTest     # roda commonTest no host JVM (Linux/CI, sem macOS)
-./gradlew :shared:allTests                # todos os targets (os testes iOS exigem macOS)
+git clone https://github.com/LuizHenri16/Moviematch-APP.git
+cd Moviematch-APP
+cp .env.example .env
 ```
 
----
+O `.env` é lido **em tempo de build** pela task `generateSecrets`, que gera a classe `app.moviematch.config.Secrets`. Ele está no `.gitignore` — nunca commite segredos reais.
 
-## Login com Google (Supabase)
+| Variável | Onde pegar | O que habilita |
+| :--- | :--- | :--- |
+| `SUPABASE_URL` | Supabase Dashboard → Project Settings → API | backend real |
+| `SUPABASE_ANON_KEY` | idem (chave pública `anon` / `sb_publishable_*`) | backend real |
+| `TMDB_API_KEY` | [TMDb → Settings → API](https://www.themoviedb.org/settings/api) (chave **v3**) | busca na tela Adicionar |
+| `WEB_CLIENT_ID` | Google Cloud Console → Credentials → OAuth client do tipo **Web application** | botão "Entrar com Google" |
 
-O login fica todo no `shared`: o app abre a UI nativa do Google (Credential Manager no Android),
-recebe um **ID token** e o troca por uma sessão Supabase com
-`supabase.auth.signInWith(IDToken) { provider = Google; nonce = ... }`.
+> **Sem nada preenchido o app roda offline** com dados de demonstração. Com `SUPABASE_URL` + `SUPABASE_ANON_KEY` ele usa o backend real; sem `WEB_CLIENT_ID`, o botão de login exibe uma mensagem clara em vez de abrir a UI nativa do Google.
 
-- `auth/AuthStore.kt` — dono da sessão: entra/sai, observa `sessionStatus` e troca o
-  `CurrentProfileStore` pelo profile real (`public.profiles`), com fallback para as claims do token.
-- `auth/GoogleSignIn.kt` — `expect`/`actual` de `GoogleSignInProvider`; só a obtenção do token é
-  específica de plataforma.
-- `data/supabase/*` — cliente supabase-kt (Auth + Postgrest) e `Settings` por plataforma
-  (`SharedPreferences` no Android, `NSUserDefaults` no iOS).
-- `presentation/settings/GoogleAccountCard.kt` — botões "Entrar com Google" / "Sair" na tela Ajustes.
+> É o client ID **Web** (não o do Android) que vai no app: ele é o `aud` do ID token, e é contra ele que o Supabase valida o token.
 
-O login é **aditivo**: sem sessão o app continua funcionando com o profile semeado.
+### 2. Google Cloud Console (login)
 
-### 1. Variáveis no `.env`
-
-| Variável | Onde pegar |
-| :--- | :--- |
-| `SUPABASE_URL` | Supabase Dashboard → Project Settings → API |
-| `SUPABASE_ANON_KEY` | idem (chave pública `sb_publishable_*` / `anon`) |
-| `WEB_CLIENT_ID` | Google Cloud Console → Credentials → OAuth client do tipo **Web application** |
-| `TMDB_API_KEY` | TMDb → Settings → API → *API Key* (chave **v3**, usada pela busca da tela Adicionar) |
-
-> É o client ID **Web** (não o Android) que vai no app: ele é o `aud` do ID token, e é contra ele
-> que o Supabase valida o token.
-
-### 2. Google Cloud Console
-
-1. **OAuth consent screen** configurada (tipo "External"; app de teste basta).
-2. Crie um **OAuth client ID** do tipo **Web application** → copie o *Client ID* para
-   `WEB_CLIENT_ID`. Guarde o *Client secret* para o passo 3 (ele **não** entra no app).
-3. Crie um **OAuth client ID** do tipo **Android** com:
-   - *Package name*: `app.moviematch`
-   - *SHA-1* do keystore que assina o app.
-
-   O Credential Manager exige esse client Android registrado (com o SHA-1 do keystore) para liberar
-   o `serverClientId` Web. Para o keystore de **debug**:
+1. Configure o **OAuth consent screen** (tipo "External"; app de teste basta).
+2. Crie um **OAuth client ID — Web application** → copie o *Client ID* para `WEB_CLIENT_ID`. Guarde o *Client secret* para o passo 3 (ele **não** entra no app).
+3. Crie um **OAuth client ID — Android** com *Package name* `app.moviematch` e o SHA-1 do keystore que assina o app. Para o keystore de **debug**:
 
    ```bash
    keytool -list -v -keystore ~/.android/debug.keystore \
      -alias androiddebugkey -storepass android -keypass android | grep SHA1
    ```
 
-   Em release, repita com o keystore real (mesmo *package*, SHA-1 do keystore de release).
+   Em release, repita com o keystore de release (mesmo *package*).
 
-### 3. Supabase Dashboard
+### 3. Supabase (banco e provider Google)
 
-Authentication → Providers → **Google**: habilite e informe o *Client ID* e o *Client secret* do
-client **Web** criado acima. Sem `WEB_CLIENT_ID` no `.env`, o botão mostra
-"Login com Google indisponível: WEB_CLIENT_ID não configurado." e a UI nativa nem é aberta.
+1. Aplique as migrações de [`supabase/`](supabase/) na ordem `0001` → `0004` (SQL Editor ou Supabase CLI). **A `0004` é obrigatória**: sem ela, sair/remover membros deixa dados antigos travando o fluxo de grupo.
+2. Authentication → Providers → **Google**: habilite e informe o *Client ID* e o *Client secret* do client **Web** criado no passo 2.
 
-### iOS
+### 4. iOS (assinatura)
 
-O login com Google **não** está ligado no iOS: falta integrar o SDK
-[GoogleSignIn-iOS](https://github.com/google/GoogleSignIn-iOS) (Swift Package, sem artefato KMP), um
-binding C-interop e um Mac para construir. O `actual` de `rememberGoogleSignInProvider()` devolve uma
-mensagem clara. O resto (sessão em `NSUserDefaults`, engine HTTP Darwin, `AuthStore`) já é
-compartilhado e funciona no iOS.
+1. Abra `iosApp/iosApp.xcodeproj` no Xcode (macOS).
+2. Em *Signing & Capabilities*, selecione o seu **Team** (ou preencha `TEAM_ID` em `iosApp/Configuration/Config.xcconfig`). O bundle id já é `app.moviematch`.
 
 ---
 
-## Dados (Supabase + TMDb)
+## ▶️ Como rodar
 
-`domain/MovieRepository` tem duas implementações, ambas em `data/`:
+### Android
 
-- `data/supabase/SupabaseMovieRepository.kt` — backend real (Postgrest + RPCs, busca no TMDb);
-  escolhida quando o `.env` traz `SUPABASE_URL` + `SUPABASE_ANON_KEY`;
-- `data/mock/MockMovieRepository.kt` — semente em memória, usada quando não há credenciais
-  (clone limpo, CI sem `.env`).
+**Android Studio:** abra a pasta raiz do projeto (`File > Open`), aguarde o **Gradle Sync**, selecione a run configuration **androidApp** e clique em ▶️ Run.
 
-A escolha acontece **só** no `dataModule` (Koin); nenhuma tela ou `ViewModel` sabe qual está ativa.
-
-### Schema
-
-`supabase/0001_init.sql` é uma cópia verbatim do schema já aplicado no projeto Supabase — tabelas
-`movies`/`series`, as sessões `sessions`/`series_sessions`, `ratings`/`series_ratings`, `profiles`,
-`groups`/`group_members`, com RLS por grupo e os RPCs `upsert_movie`/`upsert_series`. Nada foi
-alterado no arquivo: o que está versionado aqui é exatamente o que roda no servidor.
-
-Três pontos do schema que explicam decisões do repositório:
-
-- o catálogo global (`movies`/`series`) **não** tem policy de escrita: a única porta é o RPC
-  `upsert_movie`/`upsert_series` (`SECURITY DEFINER`), que resolve a linha pelo `tmdb_id`;
-- apagar um título remove apenas a sessão do grupo (`ratings` caem por cascade); a linha do catálogo
-  compartilhado permanece — outros grupos podem estar usando o mesmo filme;
-- `ratings`/`series_ratings` guardam o `group_id` desnormalizado, lido da própria sessão na hora de
-  salvar a nota.
-
-### Busca no TMDb
-
-A tela **Adicionar** busca em `https://api.themoviedb.org/3` (`language=pt-BR`, timeout de 12s) pelo
-`data/supabase/TmdbClient.kt`; a chave vem de `TMDB_API_KEY`. Sem chave, a busca falha com uma
-mensagem clara ("Chave do TMDb não configurada...") em vez de chamar a rede.
-
-Adicionar um resultado chama `addToWatchList(result)`, que busca os detalhes no TMDb, grava o título
-no catálogo pelo RPC (`upsert_*`) e cria a sessão no grupo como `PENDING` — o `tmdb_id` é a amarração
-entre os dois.
-
-Os pôsteres são gravados como `poster_path` cru (padrão do TMDb/banco) e só viram URL completa
-(`https://image.tmdb.org/t/p/<size>`) nos modelos que a UI consome: `ContentItem.posterUrl`
-(w500) e `SearchResult.posterUrl` (w185).
-
----
-
-## Versões fixadas
-
-| Componente | Versão |
-| :--- | :--- |
-| Gradle | 9.6.1 |
-| Android Gradle Plugin | 9.1.1 |
-| Kotlin | 2.4.10 |
-| Compose Multiplatform | 1.11.1 (material3 `1.11.0-alpha07`) |
-| AndroidX Activity | 1.11.0 |
-| AndroidX Lifecycle (multiplatform) | 2.11.0 |
-| Navigation Compose (multiplatform) | 2.9.2 |
-| Ktor | 3.5.1 |
-| Kotlinx coroutines / serialization / datetime | 1.11.0 / 1.11.0 / 0.8.0 |
-| supabase-kt | 3.8.0 |
-| Koin | 4.2.2 |
-| Coil3 | 3.5.0 |
-| Material 3 (`org.jetbrains.compose.material3`) | 1.11.0-alpha07 |
-| AndroidX Credential Manager (`credentials` + `credentials-play-services-auth`) | 1.6.0 |
-| `com.google.android.libraries.identity.googleid` | 1.2.1 |
-| multiplatform-settings | 1.3.0 |
-| Turbine | 1.2.1 |
-
-### Por que `compileSdk = 37`
-
-As libs AndroidX declaram um `minCompileSdk` nos metadados do AAR
-(`aar-metadata.properties`). O Gradle falha o build quando esse valor é maior que
-`android-compileSdk`, então o maior requisito do grafo manda. Verificado baixando os `.aar` e
-lendo a propriedade:
-
-| Artefato (variante Android) | Versão | `minCompileSdk` |
-| :--- | :--- | :--- |
-| `androidx.lifecycle:lifecycle-runtime-compose` | 2.11.0 | **37** ← define o piso |
-| `androidx.activity:activity` / `activity-compose` | 1.11.0 | 36 |
-| `io.coil-kt.coil3:coil-compose` | 3.5.0 | 36 |
-| `androidx.core:core` | 1.18.0 | 36 |
-| `androidx.compose.ui:ui` | 1.11.2 | 35 |
-| `androidx.compose.material3:material3` | 1.5.0-alpha17 | 35 |
-| `androidx.navigation:navigation-compose` | 2.9.7 | 35 |
-| `androidx.compose.runtime:runtime` | 1.11.2 | 34 |
-| `androidx.compose.material:material-icons-core` | 1.7.3 | 34 |
-| `org.jetbrains.androidx.lifecycle:*` (KMP) | 2.11.0 | 34 |
-| `koin`, `supabase-kt`, `multiplatform-settings` | 4.2.2 / 3.8.0 / 1.3.0 | 1 |
-
-Como o piso é 37, `android-compileSdk`/`android-targetSdk` ficam em **37** e as libs que haviam
-sido rebaixadas por causa do compileSdk 35 subiram para as versões estáveis mais novas:
-`androidx.activity` **1.11.0**, `androidx.lifecycle` **2.11.0** (artefatos multiplataforma
-`org.jetbrains.androidx.lifecycle`, que por sua vez puxam `androidx.lifecycle` 2.11.0) e
-`coil3` **3.5.0**. O `minSdk` continua 24.
-
----
-
-## Testes
-
-- `shared/src/commonTest` contém `domain/MovieMathTest.kt` (cálculos de média/veredito portados do
-  app de referência), um teste de fumaça do `expect/actual` (`PlatformTest.kt`) e os testes da camada
-  de dados (`data/supabase/*`: mappers de linha e `search`/`addToWatchList` contra um `MockEngine` do
-  Ktor, sem rede).
-- Dependências de teste já preparadas: `kotlin-test`, `kotlinx-coroutines-test`, `turbine`,
-  `ktor-client-mock`.
-- O bloco `androidLibrary { }` habilita `withHostTest { }`, então `commonTest` roda **no host JVM**
-  (Linux/CI), sem precisar de macOS:
+**Linha de comando:**
 
 ```bash
-./gradlew :shared:testAndroidHostTest    # relatório em shared/build/reports/tests/
+./gradlew :androidApp:installDebug    # instala em emulador/dispositivo conectado
+./gradlew :androidApp:assembleDebug   # apenas gera o APK de debug
 ```
 
-- No macOS, os mesmos testes também rodam no alvo iOS: `./gradlew :shared:iosSimulatorArm64Test`.
+### iOS (macOS)
 
-## Próximos passos planejados
+Rode o app pelo Xcode. O build chama automaticamente a task Gradle que compila o framework `Shared` (`embedAndSignAppleFrameworkForXcode`).
 
-- [x] Cliente Supabase + Ktor `HttpClient` no `dataModule` (Koin).
-- [x] Login com **Google Sign-In → ID token → `supabase.auth.signInWithIdToken`** (Android; iOS é
-  stub documentado, ver "Login com Google (Supabase)").
-- [x] Repositório real (`SupabaseMovieRepository`) + busca no TMDb na tela Adicionar.
-- [ ] Login com Google no iOS (SDK GoogleSignIn-iOS + binding C-interop).
-- [ ] Telas de grupos/convites (2 pessoas) conforme `docs/native-app/`.
-- [ ] Realtime na publicação `supabase_realtime` para convites e sessões.
+> **O login com Google ainda não está disponível no iOS** — falta integrar o SDK [GoogleSignIn-iOS](https://github.com/google/GoogleSignIn-iOS). Todo o resto (sessão, dados, telas) já é compartilhado. Detalhes em [`ARCHITECTURE.md` (§11.3)](ARCHITECTURE.md).
 
-Strings de UI na tela inicial estão em inglês e são **placeholders** — a camada de
-internacionalização será definida junto com as telas reais.
+### Modo offline
+
+Sem `.env` (ou sem `SUPABASE_*`), o build funciona normalmente e o app abre com catálogo, grupo e perfil de demonstração — útil para mexer na UI, CI ou clone limpo, sem configurar nada.
+
+---
+
+## 🧪 Testes
+
+```bash
+./gradlew :shared:testAndroidHostTest   # 118 testes no host JVM (Linux/CI, sem macOS)
+./gradlew :shared:allTests             # todos os alvos (os testes iOS exigem macOS)
+./gradlew :androidApp:lintDebug        # lint do app Android
+```
+
+- São **118 testes** em `shared/src/commonTest`: regras puras (`MovieMath`), fluxo de grupo (repositório, store e ViewModels), catálogo, TMDb e mappers de linha — a maioria com `MockEngine` do Ktor, sem rede.
+- Relatório HTML após a execução: `shared/build/reports/tests/testAndroidHostTest/`.
+
+---
+
+## 🚀 Como usar (fluxo principal)
+
+1. Entre com **Google** na tela de login.
+2. Em **Perfil → Minha roda**, crie uma roda ou entre com o código de convite.
+3. Convide a outra pessoa por busca ou `@handle` — ela aceita pelo próprio convite.
+4. Na aba **Adicionar**, busque um título no TMDb e coloque-o na lista do par.
+5. Em **Detalhes**, dê sua nota de 0 a 10 (marque "já assistiram juntos" se quiser) — a média e o veredito aparecem na Home.
+
+---
+
+## 🗺 Roadmap
+
+- [x] App KMP com UI Compose compartilhada (Android + iOS)
+- [x] Login com Google → Supabase Auth (Android)
+- [x] Catálogo TMDb + lista, status e notas do grupo
+- [x] Telas de roda/convites (2 pessoas) com permissões no backend (RLS + RPCs)
+- [ ] Consumo de **Realtime** (a publicação já existe no SQL; o app ainda não assina eventos)
+- [ ] Login com Google no iOS (SDK GoogleSignIn-iOS + binding C-interop)
+- [ ] Cancelar convite enviado (exige RPC nova)
+- [ ] Corrigir identidade da nota por `profileId` em vez de nome (P0-B — ver [`ARCHITECTURE.md` (§10.4)](ARCHITECTURE.md))
+- [ ] i18n formal, acessibilidade validada em device e testes de UI
+
+---
+
+## 📚 Documentação
+
+| Documento | Conteúdo |
+| :--- | :--- |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | **Fonte única da arquitetura**: camadas, navegação, estado, backend (RLS/RPCs), decisões (ADRs), dívidas e riscos |
+| [`gradle/libs.versions.toml`](gradle/libs.versions.toml) | versões de todas as dependências e plugins |
+| [`supabase/`](supabase/) | schema, RLS e RPCs versionados |
+
+> Em caso de divergência entre documentação e código, **o código prevalece**.
