@@ -237,7 +237,10 @@ object MockData {
             score = score,
             comment = comment,
             createdAt = "2026-01-01T20:00:00Z",
-            profile = ProfileRef(displayName = profile),
+            profile = ProfileRef(
+                id = if (profile.contains("Maria", ignoreCase = true)) "profile-maria" else "profile-luiz",
+                displayName = profile,
+            ),
         )
 
     private fun movie(
@@ -260,7 +263,10 @@ object MockData {
         streamingProvider = null,
         sofaComment = null,
         createdAt = "2025-12-01T19:00:00Z",
-        suggestedBy = ProfileRef(displayName = suggestedBy),
+        suggestedBy = ProfileRef(
+            id = if (suggestedBy.contains("Maria", ignoreCase = true)) "profile-maria" else "profile-luiz",
+            displayName = suggestedBy,
+        ),
         title = title,
         year = year,
         duration = formatRuntime(runtimeMinutes),
@@ -293,7 +299,10 @@ object MockData {
         streamingProvider = null,
         sofaComment = null,
         createdAt = "2025-12-01T19:00:00Z",
-        suggestedBy = ProfileRef(displayName = suggestedBy),
+        suggestedBy = ProfileRef(
+            id = if (suggestedBy.contains("Maria", ignoreCase = true)) "profile-maria" else "profile-luiz",
+            displayName = suggestedBy,
+        ),
         title = title,
         year = year,
         duration = null,

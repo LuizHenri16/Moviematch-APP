@@ -50,7 +50,26 @@ fun formatDateShort(iso: String?): String {
 fun round1(value: Double): Double = (value * 10.0).roundToInt() / 10.0
 
 /** The two individual scores of a session, one per member of the group. */
-data class ProfileScores(val maria: Double? = null, val luiz: Double? = null)
+data class ProfileScores(val member1: Double? = null, val member2: Double? = null)
+
+/** Maps each rating to its author by matching the rating's [profile.id] against two given ids. */
+fun scoreByProfileId(
+    ratings: List<RatingWithProfile>?,
+    profileId1: String,
+    profileId2: String,
+): ProfileScores {
+    var score1: Double? = null
+    var score2: Double? = null
+    ratings.orEmpty().forEach { rating ->
+        val id = rating.profile?.id ?: return@forEach
+        when {
+            id == profileId1 -> score1 = rating.score
+            id == profileId2 -> score2 = rating.score
+            else -> Unit
+        }
+    }
+    return ProfileScores(member1 = score1, member2 = score2)
+}
 
 /** Maps each rating to its author using "Maria"/"Luiz" substring matching (legacy). */
 fun scoreByProfile(ratings: List<RatingWithProfile>?): ProfileScores {
@@ -63,7 +82,7 @@ fun scoreByProfile(ratings: List<RatingWithProfile>?): ProfileScores {
             null -> Unit
         }
     }
-    return ProfileScores(maria = maria, luiz = luiz)
+    return ProfileScores(member1 = maria, member2 = luiz)
 }
 
 /** Maps each rating to its author by exact display name matching. */
@@ -107,8 +126,8 @@ fun toMovie(session: SessionWithMovie): MovieSummary {
         genres = movie?.genres.orEmpty(),
         badgeCategory = if (isWatched) movie?.mainGenre.orEmpty().uppercase() else "PENDENTE",
         isWatched = isWatched,
-        mariaRating = scores.maria,
-        luizRating = scores.luiz,
+        member1Rating = scores.member1,
+        member2Rating = scores.member2,
         averageRating = averageOf(session.ratings),
         totalRatings = session.ratings.size,
     )
@@ -128,8 +147,8 @@ fun contentToMovie(item: ContentItem): MovieSummary {
         genres = item.genres,
         badgeCategory = if (item.isWatched) item.genres.firstOrNull().orEmpty().uppercase() else "PENDENTE",
         isWatched = item.isWatched,
-        mariaRating = scores.maria,
-        luizRating = scores.luiz,
+        member1Rating = scores.member1,
+        member2Rating = scores.member2,
         averageRating = averageOf(item.ratings),
         totalRatings = item.ratings.size,
     )
@@ -196,8 +215,8 @@ data class ConsensusEntry(
     val rank: Int,
     val title: String,
     val year: Int?,
-    val mariaRating: Double?,
-    val luizRating: Double?,
+    val member1Rating: Double?,
+    val member2Rating: Double?,
     val averageRating: Double,
 )
 
@@ -234,9 +253,14 @@ data class HomeStats(
 /**
  * Single pass over the watch list producing every number/copy the Home screen needs.
  * This is the Kotlin port of the `useMemo` block of the reference `HomeScreen`.
+ *
+ * Members are identified by [member1Id]/[member2Id] (their `profiles.id`) instead of display
+ * names, so ratings are always attributed to the right person regardless of what Google returns.
  */
 fun homeStats(
     items: List<ContentItem>,
+    member1Id: String = "",
+    member2Id: String = "",
     member1Name: String = "",
     member2Name: String = "",
 ): HomeStats {
@@ -247,17 +271,17 @@ fun homeStats(
 
     // --- Índice de Sintonia: how often both members land in the same verdict band. ---
     val bothRated = items.filter { item ->
-        val (score1, score2) = scoreByProfileNames(item.ratings, member1Name, member2Name)
+        val (score1, score2) = scoreByProfileId(item.ratings, member1Id, member2Id)
         score1 != null && score2 != null
     }
     val agreed = bothRated.count { item ->
-        val (score1, score2) = scoreByProfileNames(item.ratings, member1Name, member2Name)
+        val (score1, score2) = scoreByProfileId(item.ratings, member1Id, member2Id)
         verdictBand(score1!!) == verdictBand(score2!!)
     }
     val harmonyPercentage = if (bothRated.isNotEmpty()) percentage(agreed, bothRated.size) else 0
     val meanDiff = if (bothRated.isNotEmpty()) {
         bothRated.sumOf { item ->
-            val (score1, score2) = scoreByProfileNames(item.ratings, member1Name, member2Name)
+            val (score1, score2) = scoreByProfileId(item.ratings, member1Id, member2Id)
             abs(score1!! - score2!!)
         } / bothRated.size
     } else {
@@ -273,13 +297,13 @@ fun homeStats(
     var member2Count = 0
     items.forEach { item ->
         item.ratings.forEach { rating ->
-            val displayName = rating.profile?.displayName?.lowercase() ?: ""
+            val id = rating.profile?.id ?: return@forEach
             when {
-                displayName == member1Name.lowercase() -> {
+                id == member1Id -> {
                     member1Sum += rating.score
                     member1Count++
                 }
-                displayName == member2Name.lowercase() -> {
+                id == member2Id -> {
                     member2Sum += rating.score
                     member2Count++
                 }
@@ -295,7 +319,7 @@ fun homeStats(
     val consensus = items
         .mapNotNull { item ->
             val average = averageOf(item.ratings) ?: return@mapNotNull null
-            val scores = scoreByProfile(item.ratings)
+            val scores = scoreByProfileId(item.ratings, member1Id, member2Id)
             Pair(item, Pair(scores, average))
         }
         .sortedByDescending { (_, value) -> value.second }
@@ -308,8 +332,8 @@ fun homeStats(
                     if (item.type == app.moviematch.domain.model.ContentType.TV) "Série sem título" else "Filme sem título"
                 },
                 year = item.year,
-                mariaRating = scores.maria,
-                luizRating = scores.luiz,
+                member1Rating = scores.member1,
+                member2Rating = scores.member2,
                 averageRating = round1(average),
             )
         }

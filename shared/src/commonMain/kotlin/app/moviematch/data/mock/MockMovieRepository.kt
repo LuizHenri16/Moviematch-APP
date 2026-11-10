@@ -4,7 +4,6 @@ import app.moviematch.domain.MovieRepository
 import app.moviematch.domain.model.ContentItem
 import app.moviematch.domain.model.Group
 import app.moviematch.domain.model.Profile
-import app.moviematch.domain.model.ProfileName
 import app.moviematch.domain.model.ProfileRef
 import app.moviematch.domain.model.RatingWithProfile
 import app.moviematch.domain.model.SearchResult
@@ -65,7 +64,7 @@ class MockMovieRepository(
             type = result.type,
             status = WatchStatus.PENDING,
             createdAt = "2026-10-18T12:00:00Z",
-            suggestedBy = ProfileRef(displayName = MockData.luiz.displayName),
+            suggestedBy = ProfileRef(id = MockData.luiz.id, displayName = MockData.luiz.displayName),
             title = result.title,
             year = result.year,
             duration = null,
@@ -100,7 +99,7 @@ class MockMovieRepository(
 
     override suspend fun saveRating(
         itemId: String,
-        profile: ProfileName,
+        profileId: String,
         score: Double,
         comment: String?,
         markWatched: Boolean,
@@ -110,13 +109,13 @@ class MockMovieRepository(
                 if (item.id != itemId) return@map item
 
                 val others = item.ratings.filter { existing ->
-                    ProfileName.fromDisplayName(existing.profile?.displayName) != profile
+                    existing.profile?.id != profileId
                 }
                 val updated = others + RatingWithProfile(
                     score = score,
                     comment = comment,
                     createdAt = "2026-10-18T12:00:00Z",
-                    profile = ProfileRef(displayName = profile.displayName),
+                    profile = ProfileRef(id = profileId, displayName = "Membro $profileId"),
                 )
                 val nextStatus = if (markWatched) WatchStatus.WATCHED else item.status
                 item.copy(

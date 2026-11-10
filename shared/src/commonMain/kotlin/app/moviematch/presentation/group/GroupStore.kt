@@ -92,6 +92,9 @@ class GroupStore(
             return@withLock
         }
 
+        // Publica Loading para que o usuário saiba que a atualização está em curso, em vez de
+        // ver conteúdo antigo que pode mascarar um erro temporário.
+        _groupState.value = UiState.Loading
         _groupState.value = uiStateOf("Não foi possível carregar sua roda.") {
             val group = repository.activeGroup()
             // A member already sees the outgoing invites through RLS, but the screen never shows

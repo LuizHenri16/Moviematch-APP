@@ -1,7 +1,6 @@
 package app.moviematch.data.supabase
 
 import app.moviematch.domain.model.ContentType
-import app.moviematch.domain.model.ProfileName
 import app.moviematch.domain.model.SearchResult
 import app.moviematch.domain.model.WatchStatus
 import io.github.jan.supabase.createSupabaseClient
@@ -529,7 +528,7 @@ class SupabaseMovieRepositoryTest {
 
         test.repository.saveRating(
             itemId = "session-1",
-            profile = ProfileName.MARIA,
+            profileId = "profile-maria",
             score = 9.0,
             comment = "Clássico",
             markWatched = true,
@@ -568,7 +567,7 @@ class SupabaseMovieRepositoryTest {
 
         test.repository.saveRating(
             itemId = "series-session-1",
-            profile = ProfileName.LUIZ,
+            profileId = "profile-luiz",
             score = 10.0,
             comment = null,
             markWatched = false,
@@ -594,10 +593,10 @@ class SupabaseMovieRepositoryTest {
         })
 
         val failure = assertFailsWith<MovieRepositoryException> {
-            test.repository.saveRating("session-1", ProfileName.MARIA, 8.0, null, false)
+            test.repository.saveRating(itemId = "session-1", profileId = "", score = 8.0, comment = null, markWatched = false)
         }
 
-        assertEquals("Não foi possível identificar o perfil de Maria para salvar a nota.", failure.message)
+        assertEquals("Não foi possível identificar o perfil para salvar a nota.", failure.message)
         assertTrue(test.backend.requests.none { it.method == HttpMethod.Post }, "no rating is written without a profile")
     }
 

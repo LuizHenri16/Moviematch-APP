@@ -30,7 +30,7 @@ class MovieMathTest {
         score = score,
         comment = comment,
         createdAt = "2026-01-01T20:00:00Z",
-        profile = name?.let { ProfileRef(displayName = it) },
+        profile = name?.let { ProfileRef(id = "", displayName = it) },
     )
 
     // --- formatRuntime ---------------------------------------------------------------------
@@ -100,8 +100,8 @@ class MovieMathTest {
     @Test
     fun scoreByProfileMatchesOnDisplayName() {
         val scores = scoreByProfile(listOf(rating("Maria", 9.5), rating("Luiz", 9.0)))
-        assertEquals(9.5, scores.maria)
-        assertEquals(9.0, scores.luiz)
+        assertEquals(9.5, scores.member1)
+        assertEquals(9.0, scores.member2)
     }
 
     @Test
@@ -112,8 +112,8 @@ class MovieMathTest {
         assertEquals(ProfileScores(), scoreByProfile(listOf(rating(null, 5.0))))
 
         val partial = scoreByProfile(listOf(rating("Maria", 8.0), rating("Visitante", 1.0)))
-        assertEquals(8.0, partial.maria)
-        assertNull(partial.luiz)
+        assertEquals(8.0, partial.member1)
+        assertNull(partial.member2)
     }
 
     @Test
@@ -162,8 +162,8 @@ class MovieMathTest {
         assertEquals(listOf("Ficção Científica", "Aventura"), summary.genres)
         assertEquals("FICÇÃO CIENTÍFICA", summary.badgeCategory)
         assertTrue(summary.isWatched)
-        assertEquals(9.5, summary.mariaRating)
-        assertEquals(9.0, summary.luizRating)
+        assertEquals(9.5, summary.member1Rating)
+        assertEquals(9.0, summary.member2Rating)
         assertEquals(9.25, summary.averageRating)
         assertEquals(2, summary.totalRatings)
     }
@@ -291,7 +291,7 @@ class MovieMathTest {
 
     @Test
     fun homeStatsAggregatesTheMockWatchList() {
-        val stats = homeStats(MockData.items(), "Maria", "Luiz")
+        val stats = homeStats(MockData.items(), "profile-maria", "profile-luiz", "Maria", "Luiz")
 
         assertEquals(9, stats.totalList)
         assertEquals(5, stats.watched)
@@ -308,7 +308,7 @@ class MovieMathTest {
 
     @Test
     fun homeStatsComputesTheCriticsDuel() {
-        val stats = homeStats(MockData.items(), "Maria", "Luiz")
+        val stats = homeStats(MockData.items(), "profile-maria", "profile-luiz", "Maria", "Luiz")
 
         assertEquals(8.8, stats.member1Avg)
         assertEquals(5, stats.member1RatingsCount)
@@ -320,7 +320,7 @@ class MovieMathTest {
 
     @Test
     fun homeStatsRanksTheTopThreeByAverage() {
-        val consensus = homeStats(MockData.items(), "Maria", "Luiz").consensus
+        val consensus = homeStats(MockData.items(), "profile-maria", "profile-luiz", "Maria", "Luiz").consensus
 
         assertEquals(3, consensus.size)
         assertEquals(listOf("Ruptura", "Duna: Parte Dois", "Oppenheimer"), consensus.map { it.title })
@@ -330,13 +330,13 @@ class MovieMathTest {
         assertEquals(9.8, consensus[0].averageRating)
         assertEquals(9.3, consensus[1].averageRating)
         assertEquals(8.8, consensus[2].averageRating)
-        assertEquals(10.0, consensus[0].mariaRating)
-        assertEquals(9.5, consensus[0].luizRating)
+        assertEquals(10.0, consensus[0].member1Rating)
+        assertEquals(9.5, consensus[0].member2Rating)
     }
 
     @Test
     fun homeStatsCountsGenresFromThePrimaryGenre() {
-        val genres = homeStats(MockData.items(), "Maria", "Luiz").genres
+        val genres = homeStats(MockData.items(), "profile-maria", "profile-luiz", "Maria", "Luiz").genres
 
         assertEquals(listOf("Ficção Científica", "Drama", "Terror", "Fantasia", "Comédia", "Animação"), genres.map { it.name })
         assertEquals(listOf(2, 2, 2, 1, 1, 1), genres.map { it.count })
@@ -348,7 +348,7 @@ class MovieMathTest {
 
     @Test
     fun homeStatsIsEmptySafe() {
-        val stats = homeStats(emptyList(), "Maria", "Luiz")
+        val stats = homeStats(emptyList(), "profile-maria", "profile-luiz", "Maria", "Luiz")
         assertEquals(0, stats.totalList)
         assertEquals(0, stats.watchedPercentage)
         assertEquals(0, stats.harmonyPercentage)

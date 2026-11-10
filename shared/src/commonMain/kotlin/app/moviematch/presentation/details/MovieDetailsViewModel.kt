@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.moviematch.domain.MovieRepository
 import app.moviematch.domain.model.ContentItem
-import app.moviematch.domain.model.ProfileName
+import app.moviematch.domain.model.Profile
 import app.moviematch.presentation.common.ContentSelectionStore
 import app.moviematch.presentation.common.CurrentProfileStore
 import app.moviematch.presentation.common.UiState
@@ -22,13 +22,22 @@ sealed interface DeleteResult {
     data class Failed(val message: String) : DeleteResult
 }
 
+/** Outcome of saving a rating, so the UI can show success/error feedback instead of swallowing it. */
+sealed interface SaveRatingResult {
+    data object Idle : SaveRatingResult
+    data object Saving : SaveRatingResult
+    data object Saved : SaveRatingResult
+    data class Failed(val message: String) : SaveRatingResult
+}
+
 /**
  * Detail screen of one title: loads it by id, saves/edits both ratings and handles "reassistir"
- * (back to the queue) and deletion.
+ * and deletion.
  *
  * The id comes from [ContentSelectionStore] instead of a navigation argument — see that class for
- * the rationale. The member a rating belongs to comes from [CurrentProfileStore]: the rating dialog
- * only ever edits the profile that is using the device, exactly like the reference implementation.
+ * the rationale. The member whose rating is edited is identified by [profileId] (the `profiles.id`
+ * from [CurrentProfileStore]), never by a display-name substring — this is what keeps ratings
+ * attached to the right person when real Google names are used.
  */
 class MovieDetailsViewModel(
     private val repository: MovieRepository,
@@ -45,17 +54,22 @@ class MovieDetailsViewModel(
     private val _ratingDialogOpen = MutableStateFlow(false)
     val ratingDialogOpen: StateFlow<Boolean> = _ratingDialogOpen.asStateFlow()
 
-    /** Member whose score the rating dialog edits. */
-    private val _currentProfile = MutableStateFlow(
-        ProfileName.fromDisplayName(currentProfileStore.profile.value.displayName) ?: ProfileName.MARIA,
-    )
-    val currentProfile: StateFlow<ProfileName> = _currentProfile.asStateFlow()
+    private val _saveRatingResult = MutableStateFlow<SaveRatingResult>(SaveRatingResult.Idle)
+    val saveRatingResult: StateFlow<SaveRatingResult> = _saveRatingResult.asStateFlow()
+
+    /** The profile of the person using the device (name + id). */
+    private val _currentProfile = MutableStateFlow<Profile?>(null)
+    val currentProfile: StateFlow<Profile?> = _currentProfile.asStateFlow()
+
+    /** The id of the profile whose rating the dialog edits. */
+    private val _profileId = MutableStateFlow<String?>(null)
+    val profileId: StateFlow<String?> = _profileId.asStateFlow()
 
     init {
         viewModelScope.launch {
             currentProfileStore.profile.collect { profile ->
-                _currentProfile.value =
-                    ProfileName.fromDisplayName(profile.displayName) ?: ProfileName.MARIA
+                _currentProfile.value = profile
+                _profileId.value = profile.id
             }
         }
         viewModelScope.launch {
@@ -92,25 +106,42 @@ class MovieDetailsViewModel(
     /**
      * Creates or replaces one member's rating. When [watchedTogether] is checked and the title is
      * still pending, it is also marked as watched — the same rule as the reference implementation.
+     *
+     * Any failure is surfaced through [saveRatingResult] so the UI can show an error message
+     * instead of silently swallowing it. The dialog is only closed after a successful save.
      */
     fun saveRating(
-        profile: ProfileName,
+        profileId: String,
         score: Double,
         comment: String?,
         watchedTogether: Boolean,
     ) {
         val item = (_state.value as? UiState.Content)?.data ?: return
-        viewModelScope.launch {
-            repository.saveRating(
-                itemId = item.id,
-                profile = profile,
-                score = score,
-                comment = comment?.takeIf { it.isNotBlank() },
-                markWatched = watchedTogether,
-            )
-            load(item.id)
+        val pid = this._profileId.value
+        if (pid.isNullOrBlank()) {
+            _saveRatingResult.value = SaveRatingResult.Failed("Perfil não identificado.")
+            return
         }
-        _ratingDialogOpen.value = false
+        _saveRatingResult.value = SaveRatingResult.Saving
+        viewModelScope.launch {
+            try {
+                repository.saveRating(
+                    itemId = item.id,
+                    profileId = pid,
+                    score = score,
+                    comment = comment?.takeIf { it.isNotBlank() },
+                    markWatched = watchedTogether,
+                )
+                load(item.id)
+                _saveRatingResult.value = SaveRatingResult.Saved
+            } catch (e: Exception) {
+                _saveRatingResult.value = SaveRatingResult.Failed(
+                    e.message?.takeIf { it.isNotBlank() } ?: "Não foi possível salvar a avaliação.",
+                )
+            } finally {
+                _ratingDialogOpen.value = false
+            }
+        }
     }
 
     /** Moves a watched title back to the queue. */
@@ -140,5 +171,9 @@ class MovieDetailsViewModel(
 
     fun consumeDeleteResult() {
         _deleteResult.value = DeleteResult.Idle
+    }
+
+    fun consumeSaveRatingResult() {
+        _saveRatingResult.value = SaveRatingResult.Idle
     }
 }

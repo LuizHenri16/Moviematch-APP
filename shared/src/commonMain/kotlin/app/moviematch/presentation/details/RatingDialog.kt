@@ -44,9 +44,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
-import app.moviematch.domain.ratingVerdict
+import app.moviematch.domain.model.Profile
 import app.moviematch.domain.round1
-import app.moviematch.domain.model.ProfileName
 import app.moviematch.presentation.common.formatDecimals1
 import app.moviematch.presentation.common.formatDecimals2
 import app.moviematch.presentation.components.Avatar
@@ -66,6 +65,10 @@ import app.moviematch.presentation.theme.Dimens
  * context), the "Já assistiram juntos?" switch decides whether the title is also marked as watched,
  * and the footer previews the group average plus its verdict seal.
  *
+ * The profile whose rating is edited is identified by [profileId] (the `profiles.id` from
+ * `CurrentProfileStore`), never by a hardcoded name — this keeps ratings attached to the right
+ * person when real Google names are used instead of the legacy "Maria"/"Luiz".
+ *
  * Material 3: the sheet is a [Surface] in `surfaceContainerHigh` with the extra-large (28dp) corner,
  * floating over a `scrim` overlay. [BasicAlertDialog] is used because the form is taller than a
  * stock [androidx.compose.material3.AlertDialog] and needs to scroll, so it also asks for the full
@@ -74,24 +77,21 @@ import app.moviematch.presentation.theme.Dimens
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RatingDialog(
-    currentProfile: ProfileName,
-    mariaScore: Double?,
-    luizScore: Double?,
-    mariaComment: String?,
-    luizComment: String?,
+    profileId: String,
+    profile: Profile,
+    myScore: Double?,
+    partnerScore: Double?,
+    myComment: String?,
+    partnerComment: String?,
     initiallyWatched: Boolean,
-    onSave: (profile: ProfileName, score: Double, comment: String?, watchedTogether: Boolean) -> Unit,
+    onSave: (score: Double, comment: String?, watchedTogether: Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val myScore = if (currentProfile == ProfileName.MARIA) mariaScore else luizScore
-    val otherScore = if (currentProfile == ProfileName.MARIA) luizScore else mariaScore
-    val myComment = if (currentProfile == ProfileName.MARIA) mariaComment else luizComment
-
     var score by remember { mutableStateOf(myScore) }
     var comment by remember { mutableStateOf(myComment.orEmpty()) }
     var watchedTogether by remember { mutableStateOf(initiallyWatched) }
 
-    val rated = listOfNotNull(score, otherScore)
+    val rated = listOfNotNull(score, partnerScore)
     val average = if (rated.isEmpty()) null else rated.sum() / rated.size
 
     BasicAlertDialog(
@@ -142,7 +142,7 @@ fun RatingDialog(
                     Spacer(Modifier.height(Dimens.Spacing16))
 
                     RatingSliderCard(
-                        profile = currentProfile,
+                        profile = profile,
                         score = score,
                         onScoreChange = { raw -> score = round1(raw) },
                     )
@@ -181,7 +181,6 @@ fun RatingDialog(
                                 val current = score
                                 if (current != null) {
                                     onSave(
-                                        currentProfile,
                                         current,
                                         comment.trim().ifEmpty { null },
                                         watchedTogether,
@@ -249,7 +248,7 @@ private fun TogetherRow(
 
 @Composable
 private fun RatingSliderCard(
-    profile: ProfileName,
+    profile: Profile,
     score: Double?,
     onScoreChange: (Double) -> Unit,
 ) {
@@ -269,7 +268,7 @@ private fun RatingSliderCard(
                 ) {
                     Avatar(name = profile.displayName, size = Dimens.AvatarMedium)
                     Text(
-                        text = "Nota d${if (profile == ProfileName.MARIA) "a" else "o"} " +
+                        text = "Nota d${if (profile.displayName.lowercase().contains("a")) "a" else "o"} " +
                             profile.displayName,
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -409,7 +408,7 @@ private fun AverageFooter(average: Double?) {
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                 ) {
                     Text(
-                        text = ratingVerdict(average),
+                        text = app.moviematch.domain.ratingVerdict(average),
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.padding(
                             horizontal = Dimens.Spacing12,

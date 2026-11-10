@@ -3,7 +3,6 @@ package app.moviematch.domain
 import app.moviematch.domain.model.ContentItem
 import app.moviematch.domain.model.Group
 import app.moviematch.domain.model.Profile
-import app.moviematch.domain.model.ProfileName
 import app.moviematch.domain.model.SearchResult
 import app.moviematch.domain.model.WatchStatus
 
@@ -42,12 +41,16 @@ interface MovieRepository {
     suspend fun updateStatus(id: String, status: WatchStatus, watchedAt: String? = null)
 
     /**
-     * Creates or replaces the rating of [profile] for [itemId].
+     * Creates or replaces the rating of [profileId] for [itemId].
      * When [markWatched] is true and the title is still pending, it moves to [WatchStatus.WATCHED].
+     *
+     * [profileId] is the `profiles.id` of the signed-in member (or their partner), never a
+     * display-name lookup — this is what keeps ratings attached to the right person when real
+     * Google names are used instead of the hardcoded "Maria"/"Luiz".
      */
     suspend fun saveRating(
         itemId: String,
-        profile: ProfileName,
+        profileId: String,
         score: Double,
         comment: String?,
         markWatched: Boolean,
