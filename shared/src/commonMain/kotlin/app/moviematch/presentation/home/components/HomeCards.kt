@@ -484,8 +484,8 @@ private fun ConsensusRow(movie: ConsensusEntry, memberNames: Pair<String, String
                 Text(
                     text = listOfNotNull(
                         movie.year?.toString(),
-                        "$label1: ${movie.mariaRating?.formatDecimals1() ?: "—"}",
-                        "$label2: ${movie.luizRating?.formatDecimals1() ?: "—"}",
+                        "$label1: ${movie.member1Rating?.formatDecimals1() ?: "—"}",
+                        "$label2: ${movie.member2Rating?.formatDecimals1() ?: "—"}",
                     ).joinToString(" • "),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

@@ -156,7 +156,7 @@ private fun genresOf(mainGenre: String?, subgenres: List<String>?): List<String>
 
 /** A `suggested_by` embed only exists when the profile could be read and has a name. */
 internal fun ProfileRefRow.toRef(): ProfileRef? =
-    displayName?.takeIf { it.isNotBlank() }?.let { ProfileRef(displayName = it) }
+    displayName?.takeIf { it.isNotBlank() }?.let { ProfileRef(id = "", displayName = it) }
 
 private fun RatingRow.toRatingWithProfile(): RatingWithProfile = RatingWithProfile(
     score = score,

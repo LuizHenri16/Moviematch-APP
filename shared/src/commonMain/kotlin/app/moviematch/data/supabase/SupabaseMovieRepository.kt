@@ -5,7 +5,6 @@ import app.moviematch.domain.model.ContentItem
 import app.moviematch.domain.model.ContentType
 import app.moviematch.domain.model.Group
 import app.moviematch.domain.model.Profile
-import app.moviematch.domain.model.ProfileName
 import app.moviematch.domain.model.SearchResult
 import app.moviematch.domain.model.WatchStatus
 import io.github.jan.supabase.SupabaseClient
@@ -163,15 +162,15 @@ internal class SupabaseMovieRepository(
 
     override suspend fun saveRating(
         itemId: String,
-        profile: ProfileName,
+        profileId: String,
         score: Double,
         comment: String?,
         markWatched: Boolean,
     ) = guarded("Não foi possível salvar a nota.") {
         val session = sessionRefOf(itemId) ?: return@guarded
-        val profileId = resolveProfileId(profile) ?: throw MovieRepositoryException(
-            "Não foi possível identificar o perfil de ${profile.displayName} para salvar a nota.",
-        )
+        if (profileId.isBlank()) {
+            throw MovieRepositoryException("Não foi possível identificar o perfil para salvar a nota.")
+        }
 
         if (session.isSeries) {
             supabaseClient.from(SERIES_RATINGS_TABLE).upsert(
@@ -240,10 +239,6 @@ internal class SupabaseMovieRepository(
             SessionRef(SERIES_SESSIONS_TABLE, it.groupId, watchStatusOf(it.status), isSeries = true)
         }
     }
-
-    /** Resolves the `profiles.id` of [profile] using the same substring match the UI uses. */
-    private suspend fun resolveProfileId(profile: ProfileName): String? =
-        profiles().firstOrNull { ProfileName.fromDisplayName(it.displayName) == profile }?.id
 
     private fun todayIso(): String = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
 }

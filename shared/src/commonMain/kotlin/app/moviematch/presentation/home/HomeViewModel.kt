@@ -59,6 +59,10 @@ class HomeViewModel(
     private val _memberNames = MutableStateFlow<Pair<String, String>?>(null)
     val memberNames: StateFlow<Pair<String, String>?> = _memberNames.asStateFlow()
 
+    /** Profile IDs of the pair in slot order, used to attribute ratings to the right person. */
+    private val _memberIds = MutableStateFlow<Pair<String, String>?>(null)
+    val memberIds: StateFlow<Pair<String, String>?> = _memberIds.asStateFlow()
+
     init {
         load()
         // The group lives in the app-scoped store, so creating/joining/leaving it (in Settings or in
@@ -66,14 +70,17 @@ class HomeViewModel(
         viewModelScope.launch {
             groupStore.groupState
                 .map { it.dataOrNull() }
-                .map(::participantNames)
+                .map(::participantInfo)
                 .distinctUntilChanged()
-                .collect { names ->
+                .collect { (names, ids) ->
                     if (names != _memberNames.value) {
                         _memberNames.value = names
-                        // The stats carry the per-member averages, so they depend on these names.
-                        load()
                     }
+                    if (ids != _memberIds.value) {
+                        _memberIds.value = ids
+                    }
+                    // The stats carry the per-member averages, so they depend on these names/ids.
+                    load()
                 }
         }
     }
@@ -83,8 +90,11 @@ class HomeViewModel(
             _state.value = UiState.Loading
             _state.value = uiStateOf("Não foi possível carregar sua lista.") {
                 val names = _memberNames.value
+                val ids = _memberIds.value
                 homeStats(
                     items = repository.contentItems(),
+                    member1Id = ids?.first.orEmpty(),
+                    member2Id = ids?.second.orEmpty(),
                     member1Name = names?.first.orEmpty(),
                     member2Name = names?.second.orEmpty(),
                 )
@@ -98,6 +108,17 @@ class HomeViewModel(
         return group.members.getOrNull(0)?.displayName.orEmpty() to
             group.members.getOrNull(1)?.displayName.orEmpty()
     }
+
+    /** The two active member IDs in slot order; `null` when there is no group to show. */
+    private fun participantIds(group: Group?): Pair<String, String>? {
+        if (group == null || group.members.isEmpty()) return null
+        return group.members.getOrNull(0)?.id.orEmpty() to
+            group.members.getOrNull(1)?.id.orEmpty()
+    }
+
+    /** Both names and ids in one pass, so the ViewModel recomputes once per group change. */
+    private fun participantInfo(group: Group?): Pair<Pair<String, String>?, Pair<String, String>?> =
+        participantNames(group) to participantIds(group)
 
     /** Draws one title from the "para assistir" queue. */
     fun pickRandom() {

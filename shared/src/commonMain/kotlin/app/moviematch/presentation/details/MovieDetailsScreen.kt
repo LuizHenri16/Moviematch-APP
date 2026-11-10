@@ -56,7 +56,7 @@ import app.moviematch.domain.averageOf
 import app.moviematch.domain.formatDateShort
 import app.moviematch.domain.model.ContentItem
 import app.moviematch.domain.model.ContentType
-import app.moviematch.domain.model.ProfileName
+import app.moviematch.domain.model.Profile
 import app.moviematch.domain.model.RatingWithProfile
 import app.moviematch.presentation.common.dataOrNull
 import app.moviematch.presentation.common.errorOrNull
@@ -110,6 +110,8 @@ fun MovieDetailsScreen(
     val deleteResult by viewModel.deleteResult.collectAsStateWithLifecycle()
     val ratingDialogOpen by viewModel.ratingDialogOpen.collectAsStateWithLifecycle()
     val currentProfile by viewModel.currentProfile.collectAsStateWithLifecycle()
+    val profileId by viewModel.profileId.collectAsStateWithLifecycle()
+    val saveRatingResult by viewModel.saveRatingResult.collectAsStateWithLifecycle()
 
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showQueueNotice by remember { mutableStateOf(false) }
@@ -119,6 +121,15 @@ fun MovieDetailsScreen(
             viewModel.consumeDeleteResult()
             showDeleteConfirm = false
             onBack()
+        }
+    }
+
+    LaunchedEffect(saveRatingResult) {
+        if (saveRatingResult is SaveRatingResult.Saved) {
+            viewModel.consumeSaveRatingResult()
+        } else if (saveRatingResult is SaveRatingResult.Failed) {
+            viewModel.consumeSaveRatingResult()
+            showDeleteConfirm = false
         }
     }
 
@@ -170,7 +181,7 @@ fun MovieDetailsScreen(
 
                     Spacer(Modifier.height(Dimens.Spacing16))
 
-                    VerdictCard(item = item)
+                    VerdictCard(item = item, currentProfile = currentProfile, profileId = profileId)
 
                     if (!item.overview.isNullOrBlank()) {
                         Spacer(Modifier.height(Dimens.Spacing16))
@@ -217,20 +228,25 @@ fun MovieDetailsScreen(
     }
 
     if (ratingDialogOpen && item != null) {
-        val mariaRating = ratingFor(item.ratings, ProfileName.MARIA)
-        val luizRating = ratingFor(item.ratings, ProfileName.LUIZ)
-        RatingDialog(
-            currentProfile = currentProfile,
-            mariaScore = mariaRating?.score,
-            luizScore = luizRating?.score,
-            mariaComment = mariaRating?.comment,
-            luizComment = luizRating?.comment,
-            initiallyWatched = item.isWatched,
-            onSave = { profile, score, comment, watchedTogether ->
-                viewModel.saveRating(profile, score, comment, watchedTogether)
-            },
-            onDismiss = viewModel::closeRatingDialog,
-        )
+        val current = currentProfile
+        val pid = profileId
+        if (current != null && pid != null) {
+            val myRating = ratingFor(item.ratings, pid)
+            val partnerRating = item.ratings.firstOrNull { it.profile?.id != pid }
+            RatingDialog(
+                profileId = pid,
+                profile = current,
+                myScore = myRating?.score,
+                partnerScore = partnerRating?.score,
+                myComment = myRating?.comment,
+                partnerComment = partnerRating?.comment,
+                initiallyWatched = item.isWatched,
+                onSave = { score, comment, watchedTogether ->
+                    viewModel.saveRating(pid, score, comment, watchedTogether)
+                },
+                onDismiss = viewModel::closeRatingDialog,
+            )
+        }
     }
 
     if (showDeleteConfirm && item != null) {
@@ -445,7 +461,11 @@ private fun HeroTag(genre: String) {
 
 /** "Nosso Veredito": average badge plus one rating box per member. */
 @Composable
-private fun VerdictCard(item: ContentItem) {
+private fun VerdictCard(
+    item: ContentItem,
+    currentProfile: Profile?,
+    profileId: String?,
+) {
     val average = averageOf(item.ratings)
     val approved = item.ratings.isNotEmpty() && average != null && average >= 7
 
@@ -533,19 +553,22 @@ private fun VerdictCard(item: ContentItem) {
             verticalArrangement = Arrangement.spacedBy(Dimens.Spacing12),
         ) {
             RatingBox(
-                profile = ProfileName.MARIA,
-                rating = ratingFor(item.ratings, ProfileName.MARIA),
+                profile = currentProfile ?: Profile(id = "", displayName = "—"),
+                rating = ratingFor(item.ratings, profileId ?: ""),
             )
-            RatingBox(
-                profile = ProfileName.LUIZ,
-                rating = ratingFor(item.ratings, ProfileName.LUIZ),
-            )
+            val partner = item.ratings.firstOrNull { it.profile?.id != profileId }
+            if (partner != null) {
+                RatingBox(
+                    profile = Profile(id = partner.profile?.id ?: "", displayName = partner.profile?.displayName ?: "—"),
+                    rating = partner,
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun RatingBox(profile: ProfileName, rating: RatingWithProfile?) {
+private fun RatingBox(profile: Profile, rating: RatingWithProfile?) {
     val comment = when {
         rating == null -> "Aguardando a nota."
         rating.comment.isNullOrBlank() -> "Sem comentário."
@@ -749,10 +772,10 @@ private fun QueueNoticeDialog(isTv: Boolean, onDismiss: () -> Unit) {
     )
 }
 
-/** The rating written by [profile], if any. Unknown authors are ignored. */
+/** The rating written by [profileId], if any. Unknown authors are ignored. */
 private fun ratingFor(
     ratings: List<RatingWithProfile>,
-    profile: ProfileName,
+    profileId: String,
 ): RatingWithProfile? = ratings.firstOrNull {
-    ProfileName.fromDisplayName(it.profile?.displayName) == profile
+    it.profile?.id == profileId
 }

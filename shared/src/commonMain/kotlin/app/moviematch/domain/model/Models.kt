@@ -120,7 +120,7 @@ data class RatingWithProfile(
     val profile: ProfileRef? = null,
 )
 
-data class ProfileRef(val displayName: String)
+data class ProfileRef(val id: String, val displayName: String)
 
 /**
  * A profile hit of the invite search (`search_profiles` RPC).
@@ -193,6 +193,9 @@ data class ContentItem(
 /**
  * Compact projection used by every "list" surface (`MovieCard`, consensus ranking, random pick).
  * Ported from the reference `Movie` type returned by `toMovie`/`contentToMovie`.
+ *
+ * The two rating slots are keyed by member position (slot 1 / slot 2 of the group) rather than by
+ * hardcoded names, so real users (from Google or any other provider) are always mapped correctly.
  */
 data class MovieSummary(
     val id: String,
@@ -204,8 +207,14 @@ data class MovieSummary(
     val genres: List<String> = emptyList(),
     val badgeCategory: String = "",
     val isWatched: Boolean = false,
-    val mariaRating: Double? = null,
-    val luizRating: Double? = null,
+    /** Display name of the member in slot 1 (the creator). */
+    val member1Name: String = "",
+    /** Display name of the member in slot 2 (the partner), blank when the group has one member. */
+    val member2Name: String = "",
+    /** Score given by the member in slot 1, or `null` when not rated yet. */
+    val member1Rating: Double? = null,
+    /** Score given by the member in slot 2, or `null` when not rated yet. */
+    val member2Rating: Double? = null,
     val averageRating: Double? = null,
     val totalRatings: Int = 0,
 )

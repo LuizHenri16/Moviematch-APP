@@ -18,6 +18,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
 
 /** Filter chips shown above the list. */
 enum class MoviesFilter { ALL, WATCHLIST, WATCHED }
@@ -92,19 +95,13 @@ class MoviesViewModel(
             repository.updateStatus(
                 id = entry.item.id,
                 status = next,
-                watchedAt = if (next == WatchStatus.WATCHED) TODAY else null,
+                watchedAt = if (next == WatchStatus.WATCHED) todayIso() else null,
             )
             load()
         }
     }
 
-    private companion object {
-        /**
-         * Date the session is stamped with when marked as watched. A real clock arrives with the
-         * backend (`kotlinx-datetime` is already on the classpath).
-         */
-        const val TODAY = "2026-10-18"
-    }
+    private fun todayIso(): String = Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
 }
 
 private fun MovieEntry.matches(filter: MoviesFilter, query: String): Boolean {

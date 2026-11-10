@@ -102,8 +102,10 @@ fun MovieCard(
         Spacer(Modifier.height(Dimens.Spacing16))
 
         RatingsBar(
-            mariaRating = summary.mariaRating,
-            luizRating = summary.luizRating,
+            member1Rating = summary.member1Rating,
+            member2Rating = summary.member2Rating,
+            member1Name = summary.member1Name,
+            member2Name = summary.member2Name,
             averageRating = summary.averageRating,
         )
     }
@@ -212,8 +214,10 @@ private fun WatchedToggle(watched: Boolean, onToggle: () -> Unit) {
  */
 @Composable
 private fun RatingsBar(
-    mariaRating: Double?,
-    luizRating: Double?,
+    member1Rating: Double?,
+    member2Rating: Double?,
+    member1Name: String,
+    member2Name: String,
     averageRating: Double?,
 ) {
     Surface(
@@ -233,8 +237,8 @@ private fun RatingsBar(
         ) {
             RatingBadge(
                 modifier = Modifier.weight(1f),
-                name = "Maria",
-                score = mariaRating,
+                name = member1Name.ifBlank { "Membro 1" },
+                score = member1Rating,
             )
 
             if (averageRating != null) {
@@ -243,8 +247,8 @@ private fun RatingsBar(
 
             RatingBadge(
                 modifier = Modifier.weight(1f),
-                name = "Luiz",
-                score = luizRating,
+                name = member2Name.ifBlank { "Membro 2" },
+                score = member2Rating,
             )
         }
     }
